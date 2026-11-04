@@ -1,11 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2563eb">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>App de Inventarios - Almacén / Tienda (Marino11)</title>
@@ -13,6 +8,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS para exportar/importar Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
@@ -31,7 +31,7 @@
             </div>
         </div>
         <div class="text-xs text-blue-100 hidden sm:block">
-            Modo 100% Offline
+            Modo 100% Offline / Carga Automática
         </div>
     </header>
 
@@ -50,26 +50,26 @@
 
             <div class="flex flex-col gap-4">
                 <div>
-                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">1. Cargar Maestro Artículos</span>
+                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">1. Maestro Artículos (Automático/Manual)</span>
                     <button onclick="document.getElementById('fileMasterArt').click()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2.5 rounded font-medium transition text-left flex items-center justify-between border">
                         <span>📂 Seleccionar Excel</span>
                         <span id="statusArt" class="text-[10px] text-slate-500">0 cargados</span>
                     </button>
-                    <input type="file" id="fileMasterArt" accept=".xlsx, .xls" class="hidden" onchange="cargarMasterArticulos(event)">
+                    <input type="file" id="fileMasterArt" accept=".xlsx, .xls" class="hidden" onchange="cargarMasterArticulosManual(event)">
                 </div>
 
                 <div>
-                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">2. Cargar Maestro Almacenes</span>
+                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">2. Maestro Almacenes (Automático/Manual)</span>
                     <button onclick="document.getElementById('fileMasterAlm').click()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2.5 rounded font-medium transition text-left flex items-center justify-between border">
                         <span>🏢 Seleccionar Excel</span>
                         <span id="statusAlm" class="text-[10px] text-slate-500">0 cargados</span>
                     </button>
-                    <input type="file" id="fileMasterAlm" accept=".xlsx, .xls" class="hidden" onchange="cargarMasterAlmacenes(event)">
+                    <input type="file" id="fileMasterAlm" accept=".xlsx, .xls" class="hidden" onchange="cargarMasterAlmacenesManual(event)">
                 </div>
             </div>
 
             <div class="mt-auto border-t pt-4 text-xs text-slate-400">
-                <p>💡 Los datos maestros y conteos se almacenan de forma segura en este navegador.</p>
+                <p>💡 Los datos se cargan solos desde el servidor y operan offline.</p>
             </div>
         </aside>
 
@@ -219,8 +219,6 @@
     </div>
 
     <!-- Script Lógica de la App -->
-
-
     <script>
         let masterArticulos = JSON.parse(localStorage.getItem('master_articulos')) || [];
         let masterAlmacenes = JSON.parse(localStorage.getItem('master_almacenes')) || [];
@@ -233,10 +231,37 @@
         document.getElementById('txtFecha').valueAsDate = new Date();
         document.getElementById('txtVencimiento').value = '';
 
-        renderizarAlmacenes();
-        renderizarTablaSesion();
-        renderizarInventariosGuardados();
-        actualizarContadoresUI();
+        // Carga automática de los Excel maestros desde el repositorio al iniciar
+        async function cargarMaestrosAutomaticos() {
+            try {
+                const resArt = await fetch('MASTER_ARTICULOS.xlsx');
+                if (resArt.ok) {
+                    const bufArt = await resArt.arrayBuffer();
+                    const wbArt = XLSX.read(new Uint8Array(bufArt), { type: 'array' });
+                    masterArticulos = XLSX.utils.sheet_to_json(wbArt.Sheets[wbArt.SheetNames[0]]);
+                    localStorage.setItem('master_articulos', JSON.stringify(masterArticulos));
+                }
+
+                const resAlm = await fetch('MASTER_ALMACENES.xlsx');
+                if (resAlm.ok) {
+                    const bufAlm = await resAlm.arrayBuffer();
+                    const wbAlm = XLSX.read(new Uint8Array(bufAlm), { type: 'array' });
+                    masterAlmacenes = XLSX.utils.sheet_to_json(wbAlm.Sheets[wbAlm.SheetNames[0]]);
+                    localStorage.setItem('master_almacenes', JSON.stringify(masterAlmacenes));
+                }
+            } catch (e) {
+                console.log('Usando datos maestros en caché local (modo offline).');
+            }
+
+            renderizarAlmacenes();
+            renderizarTablaSesion();
+            renderizarInventariosGuardados();
+            actualizarContadoresUI();
+        }
+
+        window.addEventListener('load', () => {
+            cargarMaestrosAutomaticos();
+        });
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
@@ -248,7 +273,7 @@
             document.getElementById('statusAlm').textContent = `${masterAlmacenes.length} cargados`;
         }
 
-        function cargarMasterAlmacenes(event) {
+        function cargarMasterAlmacenesManual(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -266,6 +291,7 @@
 
         function renderizarAlmacenes() {
             const sel = document.getElementById('selAlmacen');
+            const valorActual = sel.value;
             sel.innerHTML = '<option value="">Seleccione...</option>';
             masterAlmacenes.forEach(alm => {
                 const cod = alm['Almacén #'] || '';
@@ -275,9 +301,10 @@
                 opt.textContent = `[${cod}] ${nom}`;
                 sel.appendChild(opt);
             });
+            if (valorActual) sel.value = valorActual;
         }
 
-        function cargarMasterArticulos(event) {
+        function cargarMasterArticulosManual(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -433,7 +460,6 @@
             `).join('');
         }
 
-        // Duplica artículo y el lote, pero deja la fecha de caducidad y el stock en blanco
         function duplicarRegistro(index) {
             const item = sesionActual[index];
             const artFound = masterArticulos.find(a => String(a['Artículo #']) === String(item.articuloNum));
@@ -446,10 +472,9 @@
                 document.getElementById('lblFamilia').textContent = item.familia;
                 articuloSeleccionado = { 'Artículo #': item.articuloNum, 'Código Antiguo': item.codAntiguo, 'Abreviación *': item.abreviacion, 'Path Familia': item.familia };
             }
-            document.getElementById('txtLote').value = item.lote; // Se pre-rellena con el lote anterior
-            document.getElementById('txtVencimiento').value = ''; // Se mantiene vacío para exigir ingresar la caducidad
+            document.getElementById('txtLote').value = item.lote;
+            document.getElementById('txtVencimiento').value = '';
             document.getElementById('txtStock').value = '';
-            document.getElementById('txtVencimiento.focus ? txtVencimiento : txtStock').focus();
             document.getElementById('txtStock').focus();
         }
 
@@ -706,14 +731,6 @@
                 renderizarInventariosGuardados();
             }
         }
-
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
-            .catch(err => console.log('Error al registrar el Service Worker:', err));
-    });
-}
     </script>
 </body>
 </html>
