@@ -16,14 +16,14 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Header con botón de menú lateral -->
+    <!-- Header con botón de menú lateral visible y garantizado -->
     <header class="bg-blue-600 text-white shadow-md py-4 px-6 flex justify-between items-center gap-4 z-20">
         <div class="flex items-center gap-3">
-            <button onclick="toggleSidebar()" class="bg-blue-700 hover:bg-blue-800 p-2 rounded-lg transition focus:outline-none" title="Abrir Menú">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            <button onclick="toggleSidebar()" class="bg-blue-700 hover:bg-blue-800 p-2.5 rounded-lg transition focus:outline-none flex items-center justify-center shadow" title="Abrir Menú">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
             <div class="flex items-center gap-2">
-                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                <svg class="w-7 h-7 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                 <div>
                     <h1 class="text-base sm:text-lg font-bold leading-tight">Control de Inventarios</h1>
                     <p class="text-[11px] text-blue-200">Compatible con Marino11 ERP</p>
@@ -43,7 +43,7 @@
                 <h2 class="font-bold text-slate-800 text-sm flex items-center gap-2">
                     <span>⚙️ Menú de Configuración</span>
                 </h2>
-                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-600 p-1 rounded">
+                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-600 p-1 rounded font-bold text-lg">
                     ✕
                 </button>
             </div>
@@ -96,7 +96,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Almacén *</label>
-                        <select id="selAlmacen" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+                        <select id="selAlmacen" onchange="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
                             <option value="">Seleccione...</option>
                         </select>
                     </div>
@@ -105,20 +105,20 @@
                 <div class="grid grid-cols-1 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Inventario *</label>
-                        <input type="date" id="txtFecha" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+                        <input type="date" id="txtFecha" onchange="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Responsable de Inventario *</label>
-                    <input type="text" id="txtResponsable" placeholder="Nombre del responsable..." class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <input type="text" id="txtResponsable" placeholder="Nombre del responsable..." oninput="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
 
                 <!-- Búsqueda de Artículo -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Nombre o Cód. Antiguo) *</label>
                     <div class="relative">
-                        <input type="text" id="txtBusqueda" placeholder="Ej. EMPANADA o PRR..." oninput="filtrarArticulos()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="txtBusqueda" placeholder="Ej. EMPANADA o PRR..." oninput="filtrarArticulos(); marcarCambioFormulario();" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         <div id="listaSugerencias" class="absolute z-10 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
                     </div>
                 </div>
@@ -141,17 +141,17 @@
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Lote (Fabricación / Compra) *</label>
-                    <input type="text" id="txtLote" placeholder="Ej. LOTE-2026-A" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none uppercase">
+                    <input type="text" id="txtLote" placeholder="Ej. LOTE-2026-A" oninput="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none uppercase">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Vencimiento *</label>
-                        <input type="date" id="txtVencimiento" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="date" id="txtVencimiento" onchange="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Cantidad (Stock) *</label>
-                        <input type="number" step="any" id="txtStock" placeholder="0.00" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold text-blue-600">
+                        <input type="number" step="any" id="txtStock" placeholder="0.00" oninput="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold text-blue-600">
                     </div>
                 </div>
 
@@ -241,6 +241,23 @@
         document.getElementById('txtFecha').valueAsDate = new Date();
         document.getElementById('txtVencimiento').value = '';
 
+        // Advertencia ante cierre o refresco de página si hay datos sin guardar
+        window.addEventListener('beforeunload', (e) => {
+            const hayDatosEscritos = document.getElementById('txtResponsable').value.trim() !== '' || 
+                                     document.getElementById('txtBusqueda').value.trim() !== '' || 
+                                     document.getElementById('txtLote').value.trim() !== '' || 
+                                     document.getElementById('txtStock').value.trim() !== '' || 
+                                     sesionActual.length > 0;
+            if (hayDatosEscritos) {
+                e.preventDefault();
+                e.returnValue = ''; // Muestra el popup nativo del navegador
+            }
+        });
+
+        function marcarCambioFormulario() {
+            // Opcional por si requiere control interno adicional
+        }
+
         // Carga automática de los Excel maestros desde el repositorio al iniciar
         async function cargarMaestrosAutomaticos() {
             try {
@@ -272,6 +289,11 @@
         window.addEventListener('load', () => {
             cargarMaestrosAutomaticos();
         });
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.toggle('hidden');
+        }
 
         function actualizarContadoresUI() {
             document.getElementById('statusArt').textContent = `${masterArticulos.length} cargados`;
@@ -559,7 +581,6 @@
 
             editInventarioId = id;
             
-            // Intentar encontrar y asignar grupo y almacén correspondientes
             const almMatch = masterAlmacenes.find(a => String(a['Almacén #'] || a['Almacen #']) === String(inv.almacenCodigo));
             if (almMatch) {
                 const grupoMatch = almMatch['GRUPO'] || almMatch['Grupo'] || almMatch['grupo'];
