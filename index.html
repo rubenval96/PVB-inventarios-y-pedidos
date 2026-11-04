@@ -86,13 +86,23 @@
                     <span id="badgeModo" class="text-xs px-2.5 py-0.5 rounded bg-slate-100 text-slate-600 font-normal">Modo: Nuevo</span>
                 </h2>
 
+                <!-- Filtro Tienda / Grupo y Almacén -->
                 <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tienda / Grupo</label>
+                        <select id="selGrupo" onchange="filtrarAlmacenesPorGrupo()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+                            <option value="">Todos...</option>
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Almacén *</label>
                         <select id="selAlmacen" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
                             <option value="">Seleccione...</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Inventario *</label>
                         <input type="date" id="txtFecha" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
@@ -253,7 +263,7 @@
                 console.log('Usando datos maestros en caché local (modo offline).');
             }
 
-            renderizarAlmacenes();
+            renderizarGruposYAlmacenes();
             renderizarTablaSesion();
             renderizarInventariosGuardados();
             actualizarContadoresUI();
@@ -262,11 +272,6 @@
         window.addEventListener('load', () => {
             cargarMaestrosAutomaticos();
         });
-
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('-translate-x-full');
-            document.getElementById('sidebarOverlay').classList.toggle('hidden');
-        }
 
         function actualizarContadoresUI() {
             document.getElementById('statusArt').textContent = `${masterArticulos.length} cargados`;
@@ -282,26 +287,64 @@
                 const workbook = XLSX.read(data, {type: 'array'});
                 masterAlmacenes = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 localStorage.setItem('master_almacenes', JSON.stringify(masterAlmacenes));
-                renderizarAlmacenes();
+                renderizarGruposYAlmacenes();
                 actualizarContadoresUI();
                 alert(`¡Almacenes cargados con éxito! (${masterAlmacenes.length})`);
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function renderizarAlmacenes() {
-            const sel = document.getElementById('selAlmacen');
-            const valorActual = sel.value;
-            sel.innerHTML = '<option value="">Seleccione...</option>';
+        function renderizarGruposYAlmacenes() {
+            const selGrupo = document.getElementById('selGrupo');
+            const valorGrupoActual = selGrupo.value;
+            
+            const gruposSet = new Set();
             masterAlmacenes.forEach(alm => {
-                const cod = alm['Almacén #'] || '';
+                const g = alm['GRUPO'] || alm['Grupo'] || alm['grupo'];
+                if (g !== undefined && g !== null && String(g).trim() !== '') {
+                    gruposSet.add(String(g).trim());
+                }
+            });
+            
+            selGrupo.innerHTML = '<option value="">Todos los grupos...</option>';
+            Array.from(gruposSet).sort().forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g;
+                opt.textContent = g;
+                selGrupo.appendChild(opt);
+            });
+            if (valorGrupoActual) selGrupo.value = valorGrupoActual;
+            
+            renderizarAlmacenes();
+        }
+
+        function filtrarAlmacenesPorGrupo() {
+            renderizarAlmacenes();
+        }
+
+        function renderizarAlmacenes() {
+            const selGrupoVal = document.getElementById('selGrupo').value;
+            const selAlm = document.getElementById('selAlmacen');
+            const valorAlmActual = selAlm.value;
+            
+            selAlm.innerHTML = '<option value="">Seleccione almacén...</option>';
+            
+            const almacenesFiltrados = masterAlmacenes.filter(alm => {
+                if (!selGrupoVal) return true;
+                const g = String(alm['GRUPO'] || alm['Grupo'] || alm['grupo'] || '').trim();
+                return g === selGrupoVal;
+            });
+            
+            almacenesFiltrados.forEach(alm => {
+                const cod = alm['Almacén #'] || alm['Almacen #'] || '';
                 const nom = alm['Nombre Fiscal *'] || alm['Nombre'] || cod;
                 const opt = document.createElement('option');
                 opt.value = cod;
                 opt.textContent = `[${cod}] ${nom}`;
-                sel.appendChild(opt);
+                selAlm.appendChild(opt);
             });
-            if (valorActual) sel.value = valorActual;
+            
+            if (valorAlmActual) selAlm.value = valorAlmActual;
         }
 
         function cargarMasterArticulosManual(event) {
@@ -515,6 +558,16 @@
             if (!inv) return;
 
             editInventarioId = id;
+            
+            // Intentar encontrar y asignar grupo y almacén correspondientes
+            const almMatch = masterAlmacenes.find(a => String(a['Almacén #'] || a['Almacen #']) === String(inv.almacenCodigo));
+            if (almMatch) {
+                const grupoMatch = almMatch['GRUPO'] || almMatch['Grupo'] || almMatch['grupo'];
+                if (grupoMatch) {
+                    document.getElementById('selGrupo').value = grupoMatch;
+                    filtrarAlmacenesPorGrupo();
+                }
+            }
             document.getElementById('selAlmacen').value = inv.almacenCodigo;
             document.getElementById('txtFecha').value = inv.fechaInventario;
             document.getElementById('txtResponsable').value = inv.responsable;
