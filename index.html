@@ -96,7 +96,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Almacén *</label>
-                        <select id="selAlmacen" onchange="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+                        <select id="selAlmacen" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
                             <option value="">Seleccione...</option>
                         </select>
                     </div>
@@ -105,20 +105,20 @@
                 <div class="grid grid-cols-1 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Inventario *</label>
-                        <input type="date" id="txtFecha" onchange="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+                        <input type="date" id="txtFecha" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Responsable de Inventario *</label>
-                    <input type="text" id="txtResponsable" placeholder="Nombre del responsable..." oninput="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <input type="text" id="txtResponsable" placeholder="Nombre del responsable..." class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
 
                 <!-- Búsqueda de Artículo -->
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Nombre o Cód. Antiguo) *</label>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Nombre, Iniciales o Cód. Antiguo) *</label>
                     <div class="relative">
-                        <input type="text" id="txtBusqueda" placeholder="Ej. EMPANADA o PRR..." oninput="filtrarArticulos(); marcarCambioFormulario();" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="txtBusqueda" placeholder="Ej. TS o TARTA..." oninput="filtrarArticulos()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         <div id="listaSugerencias" class="absolute z-10 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
                     </div>
                 </div>
@@ -141,17 +141,17 @@
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Lote (Fabricación / Compra) *</label>
-                    <input type="text" id="txtLote" placeholder="Ej. LOTE-2026-A" oninput="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none uppercase">
+                    <input type="text" id="txtLote" placeholder="Ej. LOTE-2026-A" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none uppercase">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Vencimiento *</label>
-                        <input type="date" id="txtVencimiento" onchange="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="date" id="txtVencimiento" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Cantidad (Stock) *</label>
-                        <input type="number" step="any" id="txtStock" placeholder="0.00" oninput="marcarCambioFormulario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold text-blue-600">
+                        <input type="number" step="any" id="txtStock" placeholder="0.00" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold text-blue-600">
                     </div>
                 </div>
 
@@ -250,13 +250,9 @@
                                      sesionActual.length > 0;
             if (hayDatosEscritos) {
                 e.preventDefault();
-                e.returnValue = ''; // Muestra el popup nativo del navegador
+                e.returnValue = '';
             }
         });
-
-        function marcarCambioFormulario() {
-            // Opcional por si requiere control interno adicional
-        }
 
         // Carga automática de los Excel maestros desde el repositorio al iniciar
         async function cargarMaestrosAutomaticos() {
@@ -384,23 +380,40 @@
             reader.readAsArrayBuffer(file);
         }
 
+        // BÚSQUEDA CORREGIDA (Exige que las palabras COMIENCEN por los términos buscados o coincidan por prefijo)
         function filtrarArticulos() {
-            const query = document.getElementById('txtBusqueda').value.toLowerCase();
+            const queryRaw = document.getElementById('txtBusqueda').value.trim().toLowerCase();
             const contenedor = document.getElementById('listaSugerencias');
-            if (query.length < 2) {
+            
+            if (queryRaw.length === 0) {
                 contenedor.classList.add('hidden');
                 return;
             }
+
+            // Dividir por espacios para buscar palabras independientes (ej. "t s" o "tarta alm")
+            const terms = queryRaw.split(/\s+/).filter(t => t.length > 0);
+
             const filtrados = masterArticulos.filter(art => {
                 const abrev = String(art['Abreviación *'] || '').toLowerCase();
                 const cod = String(art['Artículo #'] || '').toLowerCase();
                 const codAntiguo = String(art['Código Antiguo'] || '').toLowerCase();
                 const familia = String(art['Path Familia'] || '').toLowerCase();
-                return abrev.includes(query) || cod.includes(query) || codAntiguo.includes(query) || familia.includes(query);
+
+                // Obtenemos las palabras individuales de la abreviación
+                const palabrasAbrev = abrev.split(/\s+/);
+
+                // Comprobamos que CADA término de búsqueda coincida con el inicio de alguna palabra de la abreviación,
+                // o bien con el inicio del código o código antiguo (evita falsos positivos en medio de palabras como Mitsu o Panellets)
+                return terms.every(term => {
+                    const coincideInicioPalabraAbrev = palabrasAbrev.some(palabra => palabra.startsWith(term));
+                    const coincideCodigo = cod.startsWith(term) || codAntiguo.startsWith(term);
+                    const coincideFamilia = familia.includes(term);
+                    return coincideInicioPalabraAbrev || coincideCodigo || coincideFamilia;
+                });
             }).slice(0, 15);
 
             if (filtrados.length === 0) {
-                contenedor.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin resultados.</div>';
+                contenedor.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin resultados para la búsqueda.</div>';
             } else {
                 contenedor.innerHTML = filtrados.map(art => `
                     <div onclick='seleccionarArticulo(${JSON.stringify(art)})' class="p-2 hover:bg-blue-50 cursor-pointer border-b text-xs flex justify-between">
@@ -687,7 +700,7 @@
                         <div class="flex items-center gap-1.5">
                             <button onclick="toggleDetalle(${inv.id})" class="text-xs bg-slate-200 hover:bg-slate-300 px-2 py-1 rounded font-medium transition" title="Ver detalles">👁️ Ver</button>
                             <button onclick="editarInventarioGuardado(${inv.id})" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded font-medium transition" title="Editar inventario completo">✏️ Editar</button>
-                            <button onclick="compartirInventario(${inv.id})" class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded font-medium transition" title="Compartir WhatsApp/Email">📲 Compartir</button>
+                            <button onclick="compartirInventario(${inv.id})" class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded font-medium transition" title="Compartir WhatsApp/Email">📲 Compartir</h4>
                             <button onclick="exportarExcelInventario(${inv.id})" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded font-medium transition" title="Descargar Excel">📥 Descargar</button>
                             <button onclick="eliminarInventarioGuardado(${inv.id})" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded font-medium transition" title="Eliminar sesión">🗑️</button>
                         </div>
