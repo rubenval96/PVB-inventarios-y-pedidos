@@ -122,7 +122,6 @@
 
             <!-- PANTALLA 1: MÓDULO INVENTARIO Y STOCK -->
             <div id="viewStock" class="hidden flex-col gap-6 flex-1">
-                <!-- Cabecera de Filtros y Estado del XML -->
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-5 gap-4 items-end">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Tienda / Grupo</label>
@@ -151,7 +150,6 @@
                     </div>
                 </div>
 
-                <!-- Buscador de Artículos para Inventario -->
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
                     <div class="flex justify-between items-center border-b pb-2">
                         <h2 class="text-base font-semibold text-slate-700">🔍 Búsqueda y Conteo por Lotes</h2>
@@ -160,17 +158,15 @@
 
                     <div class="relative">
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Cód. Antiguo, Cód. o Nombre) *</label>
-                        <input type="text" id="txtBusqStockArt" placeholder="Ej. NU, 10009 o Nombre..." oninput="filtrarArticulosStock()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="txtBusqStockArt" placeholder="Ej. Nu, 10009 o Nombre..." oninput="filtrarArticulosStock()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         <div id="sugerenciasStockArt" class="absolute z-20 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
                     </div>
 
-                    <!-- Tabla de Lotes del Artículo Seleccionado -->
                     <div id="contenedorLotesArticulo" class="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2">
                         <div class="p-8 text-center text-slate-400 text-xs">Busca y selecciona un artículo para ver y ajustar su stock lote por lote.</div>
                     </div>
                 </div>
 
-                <!-- Historial Inventarios de Stock -->
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
                     <div class="flex justify-between items-center border-b pb-3 mb-4">
                         <h2 class="text-base font-semibold text-slate-700">📂 Historial de Inventarios Realizados</h2>
@@ -242,6 +238,40 @@
 
         </main>
 
+    </div>
+
+    <!-- MODAL FLOTANTE PARA AÑADIR LOTE NUEVO -->
+    <div id="modalLoteNuevo" class="fixed inset-0 bg-black/40 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 flex flex-col gap-4 border border-slate-200">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                <span>➕ Añadir Lote Nuevo (No registrado en Sistema)</span>
+            </h3>
+            <p class="text-xs text-slate-500">Introduce los datos del lote físico que has contado en el almacén.</p>
+            
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Número de Lote *</label>
+                <input type="text" id="modalTxtLote" placeholder="Ej. LOTE-2026-X" class="w-full text-sm border border-slate-300 rounded p-2 uppercase focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha de Caducidad *</label>
+                <input type="date" id="modalTxtCaducidad" class="w-full text-sm border border-slate-300 rounded p-2 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Cantidad Stock Real (Físico) *</label>
+                <input type="number" step="any" min="0" id="modalTxtCantidad" placeholder="0.00" class="w-full text-sm border border-slate-300 rounded p-2 font-bold text-emerald-700 bg-emerald-50/30 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div class="flex gap-3 pt-3 border-t">
+                <button onclick="cerrarModalLoteNuevo()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold py-2.5 rounded transition">
+                    Cancelar
+                </button>
+                <button onclick="confirmarAgregarLoteNuevo()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded shadow transition">
+                    Aceptar y Añadir
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Script Lógica de la App -->
@@ -462,7 +492,7 @@
                 });
         }
 
-        // --- BÚSQUEDA INTELIGENTE CON SCORING RIGUROSO (Prioridad Código Antiguo > Artículo # > Nombre) ---
+        // --- BÚSQUEDA INTELIGENTE CON SCORING RIGUROSO ---
         function filtrarArticulosStock() {
             const queryRaw = document.getElementById('txtBusqStockArt').value.trim().toLowerCase();
             const cont = document.getElementById('sugerenciasStockArt');
@@ -476,27 +506,23 @@
 
                 let score = 0;
 
-                // 1. PRIORIDAD MÁXIMA: Código Antiguo (coincidencia exacta > comienza por > incluye)
                 if (codAntiguo === queryRaw) score += 3000;
                 else if (codAntiguo.startsWith(queryRaw)) score += 2500;
                 else if (codAntiguo.includes(queryRaw)) score += 2000;
 
-                // 2. PRIORIDAD ALTA: Código de Artículo actual
                 if (cod === queryRaw) score += 2400;
                 else if (cod.startsWith(queryRaw)) score += 1900;
                 else if (cod.includes(queryRaw)) score += 1500;
 
-                // 3. PRIORIDAD MEDIA/BAJA: Abreviación (si COMIENZA por el término tiene más peso que si lo lleva en medio)
                 if (abrev === queryRaw) score += 1000;
                 else if (abrev.startsWith(queryRaw)) score += 800;
                 else {
-                    // Verificar si alguna palabra individual de la abreviación comienza por el término
                     const palabrasAbrev = abrev.split(/\s+/);
                     const iniciaAlgunaPalabra = palabrasAbrev.some(p => p.startsWith(queryRaw));
                     if (iniciaAlgunaPalabra) {
                         score += 600;
                     } else if (abrev.includes(queryRaw)) {
-                        score += 100; // Penalizado si solo lo tiene escondido en medio (como "nupcial" o "nuez")
+                        score += 100;
                     }
                 }
 
@@ -540,14 +566,18 @@
             const abreviacion = art['Abreviación *'] || '';
             const almacenSel = document.getElementById('selAlmacenStock').value;
 
+            // Filtrar lotes del XML y también incluir lotes manuales ya añadidos en conteoStockActual
             const lotesXml = stockXmlData.filter(s => String(s.articulo) === artNum && (!almacenSel || s.almacen === almacenSel));
-
+            
+            // Recoger también los lotes manuales que pertenezcan a este artículo
+            const lotesKeysEnConteo = Object.keys(conteoStockActual).filter(k => k.startsWith(artNum + '_'));
+            
             let html = `
                 <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center">
                     <div>
                         <span class="text-xs font-bold text-slate-700">Artículo: [${artNum}] ${abreviacion}</span>
                     </div>
-                    <button onclick="agregarLoteExtraPrompt('${artNum}', '${abreviacion.replace(/'/g, "\\'")}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded font-semibold transition">
+                    <button onclick="abrirModalLoteNuevo()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded font-semibold transition">
                         ➕ Añadir Lote Nuevo
                     </button>
                 </div>
@@ -560,39 +590,60 @@
                             <th class="p-2 text-right">Stock Real (Físico)</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-slate-100" id="tablaLotesCuerpo">
             `;
 
-            if (lotesXml.length === 0) {
-                html += `<tr><td colspan="4" class="text-center text-slate-400 py-4">No hay lotes en el XML para este almacén. Usa el botón "Añadir Lote Nuevo".</td></tr>`;
-            } else {
-                lotesXml.forEach(l => {
-                    const key = `${artNum}_${l.lote}`;
-                    const stockSys = parseFloat(l.stockRealLote) || 0;
-                    const stockRealVal = conteoStockActual[key] !== undefined ? conteoStockActual[key].stockReal : stockSys;
-                    
-                    if (conteoStockActual[key] === undefined) {
-                        conteoStockActual[key] = {
-                            articuloNum: artNum,
-                            abreviacion: abreviacion,
-                            lote: l.lote,
-                            caducidad: l.caducidad || '',
-                            stockSistema: stockSys,
-                            stockReal: stockSys
-                        };
-                    }
+            const lotesProcesados = new Set();
 
+            // 1. Pintar lotes del XML
+            lotesXml.forEach(l => {
+                lotesProcesados.add(l.lote);
+                const key = `${artNum}_${l.lote}`;
+                const stockSys = parseFloat(l.stockRealLote) || 0;
+                
+                if (conteoStockActual[key] === undefined) {
+                    conteoStockActual[key] = {
+                        articuloNum: artNum,
+                        abreviacion: abreviacion,
+                        lote: l.lote,
+                        caducidad: l.caducidad || '',
+                        stockSistema: stockSys,
+                        stockReal: stockSys
+                    };
+                }
+                const stockRealVal = conteoStockActual[key].stockReal;
+
+                html += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2 font-semibold text-slate-800">${l.lote}</td>
+                        <td class="p-2 text-slate-600">${conteoStockActual[key].caducidad ? conteoStockActual[key].caducidad.slice(0, 10) : 'N/A'}</td>
+                        <td class="p-2 text-right font-bold text-blue-600">${stockSys}</td>
+                        <td class="p-2 text-right">
+                            <input type="number" step="any" min="0" value="${stockRealVal}" oninput="actualizarStockRealInput('${artNum}', '${l.lote}', this)" class="w-24 text-right text-xs border border-slate-300 rounded p-1 font-bold text-emerald-700 bg-emerald-50/30">
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // 2. Pintar lotes manuales adicionales (que no estaban en el XML)
+            lotesKeysEnConteo.forEach(key => {
+                const itemConteo = conteoStockActual[key];
+                if (!lotesProcesados.has(itemConteo.lote)) {
                     html += `
-                        <tr class="hover:bg-slate-50">
-                            <td class="p-2 font-semibold text-slate-800">${l.lote}</td>
-                            <td class="p-2 text-slate-600">${l.caducidad ? l.caducidad.slice(0, 10) : 'N/A'}</td>
-                            <td class="p-2 text-right font-bold text-blue-600">${stockSys}</td>
+                        <tr class="hover:bg-slate-50 bg-emerald-50/40">
+                            <td class="p-2 font-semibold text-emerald-800">${itemConteo.lote} <span class="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-bold">Manual</span></td>
+                            <td class="p-2 text-slate-600">${itemConteo.caducidad ? itemConteo.caducidad.slice(0, 10) : 'N/A'}</td>
+                            <td class="p-2 text-right font-bold text-blue-600">0 (Nuevo)</td>
                             <td class="p-2 text-right">
-                                <input type="number" step="any" min="0" value="${stockRealVal}" oninput="actualizarStockRealInput('${artNum}', '${l.lote}', this)" class="w-24 text-right text-xs border border-slate-300 rounded p-1 font-bold text-emerald-700 bg-emerald-50/30">
+                                <input type="number" step="any" min="0" value="${itemConteo.stockReal}" oninput="actualizarStockRealInput('${artNum}', '${itemConteo.lote}', this)" class="w-24 text-right text-xs border border-slate-300 rounded p-1 font-bold text-emerald-700 bg-emerald-50/30">
                             </td>
                         </tr>
                     `;
-                });
+                }
+            });
+
+            if (lotesXml.length === 0 && lotesKeysEnConteo.length === 0) {
+                html += `<tr><td colspan="4" class="text-center text-slate-400 py-4">No hay lotes en el XML para este almacén. Usa el botón "Añadir Lote Nuevo".</td></tr>`;
             }
 
             html += `</tbody></table>`;
@@ -608,26 +659,48 @@
             localStorage.setItem('conteo_stock_actual', JSON.stringify(conteoStockActual));
         }
 
-        function agregarLoteExtraPrompt(artNum, abreviacion) {
-            const nuevoLote = prompt("Introduce el número del nuevo lote físico contado:");
-            if (!nuevoLote || nuevoLote.trim() === '') return;
-            const caducidad = prompt("Introduce la fecha de caducidad (YYYY-MM-DD o N/A):", "N/A");
-            const cantidad = prompt("Introduce la cantidad real contada de este lote:", "0");
+        // --- MODAL DE LOTE NUEVO ---
+        function abrirModalLoteNuevo() {
+            if (!articuloStockActual) {
+                alert('Primero debes buscar y seleccionar un artículo.');
+                return;
+            }
+            document.getElementById('modalTxtLote').value = '';
+            document.getElementById('modalTxtCaducidad').value = '';
+            document.getElementById('modalTxtCantidad').value = '';
+            document.getElementById('modalLoteNuevo').classList.remove('hidden');
+            document.getElementById('modalTxtLote').focus();
+        }
 
-            const qty = parseFloat(cantidad) || 0;
-            const key = `${artNum}_${nuevoLote.trim().toUpperCase()}`;
+        function cerrarModalLoteNuevo() {
+            document.getElementById('modalLoteNuevo').classList.add('hidden');
+        }
+
+        function confirmarAgregarLoteNuevo() {
+            const loteVal = document.getElementById('modalTxtLote').value.trim().toUpperCase();
+            const cadVal = document.getElementById('modalTxtCaducidad').value;
+            const cantVal = parseFloat(document.getElementById('modalTxtCantidad').value);
+
+            if (!loteVal) { alert('El número de lote es obligatorio.'); return; }
+            if (!cadVal) { alert('Selecciona una fecha de caducidad con el calendario.'); return; }
+            if (isNaN(cantVal) || cantVal < 0) { alert('Introduce una cantidad válida.'); return; }
+
+            const artNum = String(articuloStockActual['Artículo #']);
+            const abreviacion = articuloStockActual['Abreviación *'] || '';
+            const key = `${artNum}_${loteVal}`;
 
             conteoStockActual[key] = {
                 articuloNum: artNum,
                 abreviacion: abreviacion,
-                lote: nuevoLote.trim().toUpperCase(),
-                caducidad: caducidad !== 'N/A' ? caducidad : '',
+                lote: loteVal,
+                caducidad: cadVal,
                 stockSistema: 0,
-                stockReal: qty
+                stockReal: cantVal
             };
 
             localStorage.setItem('conteo_stock_actual', JSON.stringify(conteoStockActual));
-            alert('¡Lote nuevo añadido correctamente!');
+            cerrarModalLoteNuevo();
+            alert('¡Lote nuevo añadido e integrado correctamente!');
             renderizarLotesArticulo(articuloStockActual);
         }
 
@@ -766,7 +839,6 @@
             cont.innerHTML = filtrados.length === 0 ? '<div class="p-2 text-xs text-slate-400">Sin proveedores.</div>' : filtrados.map(p => `
                 <div onclick="seleccionarProveedor('${p.replace(/'/g, "\\'")}')" class="p-2 hover:bg-emerald-50 cursor-pointer border-b text-xs font-medium text-slate-700">${p}</div>
             `).join('');
-            cont.classList.add('hidden'); // Fixed toggle
             cont.classList.remove('hidden');
         }
 
