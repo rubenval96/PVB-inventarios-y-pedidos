@@ -104,7 +104,7 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-slate-800">Inventario y Stock</h3>
-                            <p class="text-xs text-slate-500 mt-1">Conteo por lotes cruzando stock de sistema vs real con control de responsables.</p>
+                            <p class="text-xs text-slate-500 mt-1">Conteo por lotes filtrando stock cero con control de responsables.</p>
                         </div>
                     </div>
 
@@ -243,9 +243,7 @@
     <!-- MODAL FLOTANTE PARA AÑADIR LOTE NUEVO -->
     <div id="modalLoteNuevo" class="fixed inset-0 bg-black/40 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 flex flex-col gap-4 border border-slate-200">
-            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                <span>➕ Añadir Lote Nuevo (No registrado en Sistema)</span>
-            </h3>
+            <h3 class="text-base font-bold text-slate-800">➕ Añadir Lote Nuevo (No registrado en Sistema)</h3>
             <p class="text-xs text-slate-500">Introduce los datos del lote físico que has contado en el almacén.</p>
             
             <div>
@@ -287,7 +285,6 @@
         let cantidadesPedido = {};
         let editPedidoId = null;
 
-        // Estructura de conteo actual de stock por artículo/lote
         let conteoStockActual = JSON.parse(localStorage.getItem('conteo_stock_actual')) || {};
         let editInventarioStockId = null;
 
@@ -340,7 +337,7 @@
         function actualizarContadoresUI() {
             document.getElementById('statusArt').textContent = `${masterArticulos.length} cargados`;
             document.getElementById('statusAlm').textContent = `${masterAlmacenes.length} cargados`;
-            document.getElementById('statusStock').textContent = `${stockXmlData.length} lotes`;
+            document.getElementById('statusStock').textContent = `${stockXmlData.length} lotes con stock`;
             if (fechaXmlReporte) {
                 document.getElementById('txtFechaXml').value = fechaXmlReporte.slice(0, 10);
             }
@@ -390,20 +387,25 @@
                 const node = nodes[i];
                 const getVal = (tag) => node.getElementsByTagName(tag)[0] ? node.getElementsByTagName(tag)[0].textContent : '';
                 
-                const item = {
-                    almacen: getVal('Almacén'),
-                    fecha: getVal('Fecha'),
-                    articulo: getVal('Artículo'),
-                    stockReal: getVal('StockReal'),
-                    lote: getVal('Lote'),
-                    stockRealLote: getVal('StockRealLote'),
-                    caducidad: getVal('Caducidad')
-                };
-                if (item.articulo && item.articulo !== '-') {
-                    stockXmlData.push(item);
-                }
-                if (item.fecha && !fechaXmlReporte) {
-                    fechaXmlReporte = item.fecha;
+                const stockLoteVal = parseFloat(getVal('StockRealLote')) || 0;
+                
+                // FILTRO DE STOCK CERO: Omitimos lotes con 0 o negativos para limpiar información innecesaria
+                if (stockLoteVal > 0) {
+                    const item = {
+                        almacen: getVal('Almacén'),
+                        fecha: getVal('Fecha'),
+                        articulo: getVal('Artículo'),
+                        stockReal: getVal('StockReal'),
+                        lote: getVal('Lote'),
+                        stockRealLote: stockLoteVal,
+                        caducidad: getVal('Caducidad')
+                    };
+                    if (item.articulo && item.articulo !== '-') {
+                        stockXmlData.push(item);
+                    }
+                    if (item.fecha && !fechaXmlReporte) {
+                        fechaXmlReporte = item.fecha;
+                    }
                 }
             }
             localStorage.setItem('stock_xml_data', JSON.stringify(stockXmlData));
@@ -417,7 +419,7 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 procesarXmlStock(e.target.result);
-                alert(`¡Stock XML cargado con éxito! (${stockXmlData.length} registros). Fecha: ${fechaXmlReporte.slice(0,10)}`);
+                alert(`¡Stock XML cargado con éxito! Se han filtrado los lotes en cero. Lotes activos: ${stockXmlData.length}. Fecha: ${fechaXmlReporte.slice(0,10)}`);
             };
             reader.readAsText(file);
         }
@@ -566,10 +568,7 @@
             const abreviacion = art['Abreviación *'] || '';
             const almacenSel = document.getElementById('selAlmacenStock').value;
 
-            // Filtrar lotes del XML y también incluir lotes manuales ya añadidos en conteoStockActual
             const lotesXml = stockXmlData.filter(s => String(s.articulo) === artNum && (!almacenSel || s.almacen === almacenSel));
-            
-            // Recoger también los lotes manuales que pertenezcan a este artículo
             const lotesKeysEnConteo = Object.keys(conteoStockActual).filter(k => k.startsWith(artNum + '_'));
             
             let html = `
@@ -590,12 +589,11 @@
                             <th class="p-2 text-right">Stock Real (Físico)</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100" id="tablaLotesCuerpo">
+                    <tbody class="divide-y divide-slate-100">
             `;
 
             const lotesProcesados = new Set();
 
-            // 1. Pintar lotes del XML
             lotesXml.forEach(l => {
                 lotesProcesados.add(l.lote);
                 const key = `${artNum}_${l.lote}`;
@@ -625,7 +623,6 @@
                 `;
             });
 
-            // 2. Pintar lotes manuales adicionales (que no estaban en el XML)
             lotesKeysEnConteo.forEach(key => {
                 const itemConteo = conteoStockActual[key];
                 if (!lotesProcesados.has(itemConteo.lote)) {
@@ -643,7 +640,7 @@
             });
 
             if (lotesXml.length === 0 && lotesKeysEnConteo.length === 0) {
-                html += `<tr><td colspan="4" class="text-center text-slate-400 py-4">No hay lotes en el XML para este almacén. Usa el botón "Añadir Lote Nuevo".</td></tr>`;
+                html += `<tr><td colspan="4" class="text-center text-slate-400 py-4">No hay lotes activos en el XML para este almacén. Usa el botón "Añadir Lote Nuevo".</td></tr>`;
             }
 
             html += `</tbody></table>`;
