@@ -159,8 +159,8 @@
                     </div>
 
                     <div class="relative">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Nombre, Cód. o Iniciales) *</label>
-                        <input type="text" id="txtBusqStockArt" placeholder="Ej. PRR o 10002..." oninput="filtrarArticulosStock()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Nombre, Cód. Antiguo o Cód.) *</label>
+                        <input type="text" id="txtBusqStockArt" placeholder="Ej. Nu, 10009 o Código..." oninput="filtrarArticulosStock()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         <div id="sugerenciasStockArt" class="absolute z-20 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
                     </div>
 
@@ -258,7 +258,6 @@
         let editPedidoId = null;
 
         // Estructura de conteo actual de stock por artículo/lote
-        // Formato: { 'ArticuloNum_Lote': { articuloNum, abreviacion, lote, caducidad, stockSistema, stockReal } }
         let conteoStockActual = JSON.parse(localStorage.getItem('conteo_stock_actual')) || {};
         let editInventarioStockId = null;
 
@@ -287,7 +286,6 @@
                     masterAlmacenes = XLSX.utils.sheet_to_json(wbAlm.Sheets[wbAlm.SheetNames[0]]);
                     localStorage.setItem('master_almacenes', JSON.stringify(masterAlmacenes));
                 }
-                // Carga automática del XML de Stock si existe en la raíz
                 const resStock = await fetch('STOCK ACTUAL.xml');
                 if (resStock.ok) {
                     const textXml = await resStock.text();
@@ -312,7 +310,7 @@
         function actualizarContadoresUI() {
             document.getElementById('statusArt').textContent = `${masterArticulos.length} cargados`;
             document.getElementById('statusAlm').textContent = `${masterAlmacenes.length} cargados`;
-            document.getElementById('statusStock').textContent = `${stockXmlData.length} registros`;
+            document.getElementById('statusStock').textContent = `${stockXmlData.length} lotes`;
             if (fechaXmlReporte) {
                 document.getElementById('txtFechaXml').value = fechaXmlReporte.slice(0, 10);
             }
@@ -348,10 +346,10 @@
                 document.getElementById('viewStock').classList.add('hidden');
                 document.getElementById('viewStock').classList.remove('flex');
                 document.getElementById('lblModuloActivo').textContent = 'Módulo: Pedidos';
+                renderizarPedidosGuardados();
             }
         }
 
-        // Procesar XML de Stock
         function procesarXmlStock(xmlText) {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlText, "text/xml");
@@ -464,19 +462,41 @@
                 });
         }
 
-        // --- BUSCADOR Y GESTIÓN DE STOCK POR LOTES ---
-        let articuloStockActual = null;
-
+        // --- BÚSQUEDA INTELIGENTE CON SCORING PARA STOCK ---
         function filtrarArticulosStock() {
-            const query = document.getElementById('txtBusqStockArt').value.trim().toLowerCase();
+            const queryRaw = document.getElementById('txtBusqStockArt').value.trim().toLowerCase();
             const cont = document.getElementById('sugerenciasStockArt');
-            if (query.length === 0) { cont.classList.add('hidden'); return; }
+            if (queryRaw.length === 0) { cont.classList.add('hidden'); return; }
 
-            const terms = query.split(/\s+/);
-            const filtrados = masterArticulos.filter(art => {
-                const text = `${art['Abreviación *'] || ''} ${art['Artículo #'] || ''} ${art['Código Antiguo'] || ''} ${art['Path Familia'] || ''}`.toLowerCase();
-                return terms.every(t => text.includes(t));
-            }).slice(0, 15);
+            const resultadosPuntuados = masterArticulos.map(art => {
+                const abrev = String(art['Abreviación *'] || '').toLowerCase();
+                const cod = String(art['Artículo #'] || '').toLowerCase();
+                const codAntiguo = String(art['Código Antiguo'] || '').toLowerCase();
+                const familia = String(art['Path Familia'] || '').toLowerCase();
+
+                let score = 0;
+                if (codAntiguo === queryRaw) score += 1000;
+                else if (codAntiguo.startsWith(queryRaw)) score += 800;
+                else if (codAntiguo.includes(queryRaw)) score += 600;
+
+                if (cod === queryRaw) score += 900;
+                else if (cod.startsWith(queryRaw)) score += 700;
+                else if (cod.includes(queryRaw)) score += 500;
+
+                if (abrev === queryRaw) score += 850;
+                else if (abrev.startsWith(queryRaw)) score += 650;
+                else if (abrev.includes(queryRaw)) score += 300;
+
+                if (familia.includes(queryRaw)) score += 100;
+
+                return { art, score };
+            });
+
+            const filtrados = resultadosPuntuados
+                .filter(item => item.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 15)
+                .map(item => item.art);
 
             if (filtrados.length === 0) {
                 cont.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin resultados.</div>';
@@ -494,6 +514,7 @@
             cont.classList.remove('hidden');
         }
 
+        let articuloStockActual = null;
         function seleccionarArticuloStock(art) {
             articuloStockActual = art;
             document.getElementById('txtBusqStockArt').value = art['Abreviación *'];
@@ -506,7 +527,6 @@
             const abreviacion = art['Abreviación *'] || '';
             const almacenSel = document.getElementById('selAlmacenStock').value;
 
-            // Extraer lotes del XML para este artículo y almacén
             const lotesXml = stockXmlData.filter(s => String(s.articulo) === artNum && (!almacenSel || s.almacen === almacenSel));
 
             let html = `
@@ -527,7 +547,7 @@
                             <th class="p-2 text-right">Stock Real (Físico)</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100" id="tablaLotesCuerpo-${artNum}">
+                    <tbody class="divide-y divide-slate-100">
             `;
 
             if (lotesXml.length === 0) {
@@ -536,9 +556,8 @@
                 lotesXml.forEach(l => {
                     const key = `${artNum}_${l.lote}`;
                     const stockSys = parseFloat(l.stockRealLote) || 0;
-                    const stockRealVal = conteoStockActual[key] !== undefined ? conteoStockActual[key] : stockSys;
+                    const stockRealVal = conteoStockActual[key] !== undefined ? conteoStockActual[key].stockReal : stockSys;
                     
-                    // Guardar inicial en memoria si no existe
                     if (conteoStockActual[key] === undefined) {
                         conteoStockActual[key] = {
                             articuloNum: artNum,
@@ -590,7 +609,7 @@
                 abreviacion: abreviacion,
                 lote: nuevoLote.trim().toUpperCase(),
                 caducidad: caducidad !== 'N/A' ? caducidad : '',
-                stockSistema: 0, // No existía en el sistema
+                stockSistema: 0,
                 stockReal: qty
             };
 
@@ -818,7 +837,7 @@
                     const artData = masterArticulos.find(a => String(a['Artículo #']) === String(artCod));
                     if (artData) {
                         const pathFam = artData['Path Familia'] || artData['Familia'] || 'SIN FAMILIA';
-                        const partesFam = pathFam.split(/[\\/]/);
+                        const partesFam = pathFam.split(/[\/]/);
                         lineas.push({ articuloNum: artCod, abreviacion: artData['Abreviación *'] || '', familiaLarga: pathFam, familiaCorta: partesFam[partesFam.length - 1].trim(), cantidad: qty });
                     }
                 }
