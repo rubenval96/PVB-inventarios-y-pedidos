@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App de Inventarios - Almacén / Tienda (Marino11)</title>
+    <title>App de Gestión - Inventarios y Pedidos (Marino11)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS para exportar/importar Excel -->
+    <!-- SheetJS para Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF para generar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
@@ -16,22 +18,23 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Header con botón de menú lateral visible y garantizado -->
+    <!-- Header con botón de menú lateral y selector rápido de módulo -->
     <header class="bg-blue-600 text-white shadow-md py-4 px-6 flex justify-between items-center gap-4 z-20">
         <div class="flex items-center gap-3">
             <button onclick="toggleSidebar()" class="bg-blue-700 hover:bg-blue-800 p-2.5 rounded-lg transition focus:outline-none flex items-center justify-center shadow" title="Abrir Menú">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="mostrarPantallaInicio()" title="Ir al Inicio">
                 <svg class="w-7 h-7 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                 <div>
-                    <h1 class="text-base sm:text-lg font-bold leading-tight">Control de Inventarios</h1>
-                    <p class="text-[11px] text-blue-200">Compatible con Marino11 ERP</p>
+                    <h1 class="text-base sm:text-lg font-bold leading-tight">Control Obrador & Tiendas</h1>
+                    <p class="text-[11px] text-blue-200" id="lblModuloActivo">Selecciona un Módulo</p>
                 </div>
             </div>
         </div>
-        <div class="text-xs text-blue-100 hidden sm:block">
-            Modo 100% Offline / Carga Automática
+        <div class="flex items-center gap-2">
+            <button onclick="cambiarModulo('inventario')" id="btnNavInv" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-semibold transition hidden">📦 Inventarios</button>
+            <button onclick="cambiarModulo('pedidos')" id="btnNavPed" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-semibold transition hidden">🛒 Pedidos</button>
         </div>
     </header>
 
@@ -41,15 +44,17 @@
         <aside id="sidebar" class="absolute inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 ease-in-out w-72 bg-white border-r border-slate-200 shadow-xl z-30 flex flex-col p-5 gap-6">
             <div class="flex justify-between items-center border-b pb-3">
                 <h2 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                    <span>⚙️ Menú de Configuración</span>
+                    <span>⚙️ Menú y Configuración</span>
                 </h2>
-                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-600 p-1 rounded font-bold text-lg">
-                    ✕
-                </button>
+                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-600 p-1 rounded font-bold text-lg">✕</button>
             </div>
 
             <div class="flex flex-col gap-4">
-                <div>
+                <button onclick="mostrarPantallaInicio(); toggleSidebar();" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs px-3 py-2.5 rounded font-bold transition text-left flex items-center gap-2">
+                    <span>🏠 Volver al Menú Principal</span>
+                </button>
+
+                <div class="border-t pt-3">
                     <span class="block text-xs font-bold text-slate-400 uppercase mb-2">1. Maestro Artículos (Automático/Manual)</span>
                     <button onclick="document.getElementById('fileMasterArt').click()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2.5 rounded font-medium transition text-left flex items-center justify-between border">
                         <span>📂 Seleccionar Excel</span>
@@ -69,7 +74,7 @@
             </div>
 
             <div class="mt-auto border-t pt-4 text-xs text-slate-400">
-                <p>💡 Los datos se cargan solos desde el servidor y operan offline.</p>
+                <p>💡 Sincronizado 100% offline con GitHub Pages.</p>
             </div>
         </aside>
 
@@ -77,152 +82,231 @@
         <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/30 z-20 hidden transition-opacity"></div>
 
         <!-- Main Container -->
-        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-y-auto">
+        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 overflow-y-auto flex flex-col">
 
-            <!-- Columna Izquierda: Formulario de Conteo Rápido -->
-            <section class="lg:col-span-1 bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
-                <h2 class="text-base font-semibold text-slate-700 border-b pb-2 flex justify-between items-center">
-                    <span>📝 Conteo Rápido</span>
-                    <span id="badgeModo" class="text-xs px-2.5 py-0.5 rounded bg-slate-100 text-slate-600 font-normal">Modo: Nuevo</span>
-                </h2>
-
-                <!-- Filtro Tienda / Grupo y Almacén -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tienda / Grupo</label>
-                        <select id="selGrupo" onchange="filtrarAlmacenesPorGrupo()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
-                            <option value="">Todos...</option>
-                        </select>
+            <!-- PANTALLA 0: MENÚ PRINCIPAL DE SELECCIÓN -->
+            <div id="viewInicio" class="flex-1 flex flex-col items-center justify-center gap-8 py-12">
+                <div class="text-center max-w-xl">
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-2">¿Qué deseas realizar hoy?</h2>
+                    <p class="text-sm text-slate-500">Selecciona el módulo de trabajo para acceder al panel correspondiente.</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl px-4">
+                    <div onclick="cambiarModulo('inventario')" class="bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-500 rounded-2xl p-6 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center text-center gap-4 group">
+                        <div class="w-16 h-16 bg-blue-100 group-hover:bg-blue-600 text-blue-600 group-hover:text-white rounded-2xl flex items-center justify-center text-3xl transition">
+                            📦
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Conteo de Inventarios</h3>
+                            <p class="text-xs text-slate-500 mt-1">Realiza recuentos de stock por lotes y caducidades con exportación para Marino11.</p>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Almacén *</label>
-                        <select id="selAlmacen" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
-                            <option value="">Seleccione...</option>
-                        </select>
+
+                    <div onclick="cambiarModulo('pedidos')" class="bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-500 rounded-2xl p-6 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center text-center gap-4 group">
+                        <div class="w-16 h-16 bg-emerald-100 group-hover:bg-emerald-600 text-emerald-600 group-hover:text-white rounded-2xl flex items-center justify-center text-3xl transition">
+                            🛒
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Módulo de Pedidos</h3>
+                            <p class="text-xs text-slate-500 mt-1">Genera pedidos por proveedor agrupados por familias de forma rápida y ordenada.</p>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="grid grid-cols-1 gap-3">
+            <!-- PANTALLA 1: MÓDULO DE INVENTARIOS -->
+            <div id="viewInventario" class="hidden grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+                <section class="lg:col-span-1 bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
+                    <h2 class="text-base font-semibold text-slate-700 border-b pb-2 flex justify-between items-center">
+                        <span>📝 Conteo Rápido</span>
+                        <span id="badgeModo" class="text-xs px-2.5 py-0.5 rounded bg-slate-100 text-slate-600 font-normal">Modo: Nuevo</span>
+                    </h2>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Tienda / Grupo</label>
+                            <select id="selGrupoInv" onchange="filtrarAlmacenesPorGrupo()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+                                <option value="">Todos...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Almacén *</label>
+                            <select id="selAlmacenInv" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Inventario *</label>
-                        <input type="date" id="txtFecha" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+                        <input type="date" id="txtFechaInv" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
                     </div>
-                </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Responsable de Inventario *</label>
-                    <input type="text" id="txtResponsable" placeholder="Nombre del responsable..." class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Responsable de Inventario *</label>
+                        <input type="text" id="txtResponsable" placeholder="Nombre del responsable..." class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
 
-                <!-- Búsqueda de Artículo -->
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Nombre, Iniciales o Cód. Antiguo) *</label>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Nombre, Iniciales o Cód.) *</label>
+                        <div class="relative">
+                            <input type="text" id="txtBusquedaArt" placeholder="Ej. TS o EMPANADA..." oninput="filtrarArticulosInventario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <div id="listaSugerenciasInv" class="absolute z-10 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded border border-slate-200">
+                        <div>
+                            <span class="block text-[11px] font-bold text-slate-400">CÓDIGO ARTÍCULO</span>
+                            <span id="lblArticuloNum" class="text-sm font-semibold text-slate-800">-</span>
+                        </div>
+                        <div>
+                            <span class="block text-[11px] font-bold text-slate-400">CÓD. ANTIGUO</span>
+                            <span id="lblCodAntiguo" class="text-sm font-semibold text-blue-600">-</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="block text-[11px] font-bold text-slate-400">FAMILIA (PATH)</span>
+                        <span id="lblFamilia" class="text-xs font-semibold text-slate-700 truncate block">-</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Lote (Fabricación / Compra) *</label>
+                        <input type="text" id="txtLote" placeholder="Ej. LOTE-2026-A" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none uppercase">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Vencimiento *</label>
+                            <input type="date" id="txtVencimiento" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Cantidad (Stock) *</label>
+                            <input type="number" step="any" id="txtStock" placeholder="0.00" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold text-blue-600">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="guardarRegistroSesion()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded text-sm transition shadow">
+                            ➕ Añadir / Consolidar Línea
+                        </button>
+                        <button onclick="cancelarEdicionLinea()" id="btnCancelarLinea" class="hidden bg-slate-300 hover:bg-slate-400 text-slate-700 font-medium py-2 px-2 rounded text-sm transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </section>
+
+                <section class="lg:col-span-2 flex flex-col gap-6">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                        <div class="flex justify-between items-center border-b pb-3 mb-4">
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-base font-semibold text-slate-700">📋 Conteo Actual en Curso</h2>
+                                <span id="badgeEditandoInventario" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">Editando Inventario Guardado</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span id="contadorRegistros" class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">0 ítems</span>
+                                <button onclick="finalizarYGuardarInventario()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded transition shadow">
+                                    💾 Guardar en Historial
+                                </button>
+                                <button onclick="cancelarEdicionInventario()" id="btnCancelarInv" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded transition">
+                                    Cancelar Edición
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 overflow-x-auto max-h-64">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-600 uppercase font-bold sticky top-0">
+                                        <th class="p-2">Cód.</th>
+                                        <th class="p-2">Cód. Ant.</th>
+                                        <th class="p-2">Abreviación</th>
+                                        <th class="p-2">Lote</th>
+                                        <th class="p-2">Vencimiento</th>
+                                        <th class="p-2 text-right">Stock</th>
+                                        <th class="p-2 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaRegistrosBody" class="divide-y divide-slate-200">
+                                    <tr><td colspan="7" class="text-center text-slate-400 py-4">No hay líneas añadidas en esta sesión.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                        <div class="flex justify-between items-center border-b pb-3 mb-4">
+                            <h2 class="text-base font-semibold text-slate-700">📂 Inventarios Guardados (Cabeceras)</h2>
+                            <span id="contadorInventariosGuardados" class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full">0 guardados</span>
+                        </div>
+                        <div class="flex-1 overflow-x-auto max-h-80">
+                            <div id="listaInventariosGuardados" class="flex flex-col gap-3">
+                                <p class="text-center text-slate-400 py-4 text-xs">No hay inventarios guardados todavía.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- PANTALLA 2: MÓDULO DE PEDIDOS -->
+            <div id="viewPedidos" class="hidden flex-col gap-6 flex-1">
+                <!-- Filtros y Cabecera de Pedido -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                    <!-- Buscador de Proveedor -->
                     <div class="relative">
-                        <input type="text" id="txtBusqueda" placeholder="Ej. TS o TARTA..." oninput="filtrarArticulos()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        <div id="listaSugerencias" class="absolute z-10 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
-                    </div>
-                </div>
-
-                <!-- Datos Autocompletados -->
-                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded border border-slate-200">
-                    <div>
-                        <span class="block text-[11px] font-bold text-slate-400">CÓDIGO ARTÍCULO</span>
-                        <span id="lblArticuloNum" class="text-sm font-semibold text-slate-800">-</span>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">1. Proveedor (Nombre) *</label>
+                        <input type="text" id="txtBusquedaProv" placeholder="Buscar proveedor..." oninput="filtrarProveedores()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 font-medium">
+                        <div id="listaSugerenciasProv" class="absolute z-20 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
                     </div>
                     <div>
-                        <span class="block text-[11px] font-bold text-slate-400">CÓD. ANTIGUO</span>
-                        <span id="lblCodAntiguo" class="text-sm font-semibold text-blue-600">-</span>
-                    </div>
-                </div>
-                <div>
-                    <span class="block text-[11px] font-bold text-slate-400">FAMILIA (PATH)</span>
-                    <span id="lblFamilia" class="text-xs font-semibold text-slate-700 truncate block">-</span>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Lote (Fabricación / Compra) *</label>
-                    <input type="text" id="txtLote" placeholder="Ej. LOTE-2026-A" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none uppercase">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Vencimiento *</label>
-                        <input type="date" id="txtVencimiento" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">2. Tienda / Grupo *</label>
+                        <select id="selGrupoPed" onchange="filtrarAlmacenesPed()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50">
+                            <option value="">Todos los grupos...</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Cantidad (Stock) *</label>
-                        <input type="number" step="any" id="txtStock" placeholder="0.00" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold text-blue-600">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">3. Almacén Destino *</label>
+                        <select id="selAlmacenPed" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50">
+                            <option value="">Seleccione almacén...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button onclick="guardarPedidoEnHistorial()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 rounded shadow transition flex items-center justify-center gap-1.5">
+                            <span>💾 Guardar Pedido</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="flex gap-2 pt-2">
-                    <button onclick="guardarRegistroSesion()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded text-sm transition shadow">
-                        ➕ Añadir / Consolidar Línea
-                    </button>
-                    <button onclick="cancelarEdicionLinea()" id="btnCancelarLinea" class="hidden bg-slate-300 hover:bg-slate-400 text-slate-700 font-medium py-2 px-2 rounded text-sm transition">
-                        Cancelar
-                    </button>
-                </div>
-            </section>
+                <!-- Matriz de Artículos por Familia -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col flex-1">
+                    <div class="flex justify-between items-center border-b pb-3 mb-4">
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-base font-semibold text-slate-700">🛒 Listado de Artículos del Proveedor</h2>
+                            <input type="text" id="txtFiltroMatriz" placeholder="Filtrar artículos en pantalla..." oninput="filtrarMatrizPedidoUI()" class="text-xs border border-slate-300 rounded px-3 py-1.5 w-64 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span id="badgeEditandoPedido" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">Editando Pedido Guardado</span>
+                            <span id="contadorArticulosProv" class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full">0 artículos</span>
+                        </div>
+                    </div>
 
-            <!-- Columna Derecha: Sesión Actual e Historial -->
-            <section class="lg:col-span-2 flex flex-col gap-6">
-                
-                <!-- Tabla Sesión Actual -->
+                    <div class="flex-1 overflow-x-auto max-h-[450px]" id="contenedorMatrizPedidos">
+                        <div class="text-center text-slate-400 py-12 text-sm">Selecciona un <b>Proveedor</b> en el buscador superior para desplegar la matriz.</div>
+                    </div>
+                </div>
+
+                <!-- Sección Pedidos Guardados / Historial -->
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
                     <div class="flex justify-between items-center border-b pb-3 mb-4">
-                        <div class="flex items-center gap-2">
-                            <h2 id="tituloSesion" class="text-base font-semibold text-slate-700">📋 Conteo Actual en Curso</h2>
-                            <span id="badgeEditandoInventario" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">Editando Inventario Guardado</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span id="contadorRegistros" class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">0 ítems</span>
-                            <button onclick="finalizarYGuardarInventario()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded transition shadow">
-                                💾 Guardar en Historial
-                            </button>
-                            <button onclick="cancelarEdicionInventario()" id="btnCancelarInv" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded transition">
-                                Cancelar Edición
-                            </button>
-                        </div>
+                        <h2 class="text-base font-semibold text-slate-700">📂 Historial de Pedidos Guardados</h2>
+                        <span id="contadorPedidosGuardados" class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full">0 guardados</span>
                     </div>
-
-                    <div class="flex-1 overflow-x-auto max-h-64">
-                        <table class="w-full text-left border-collapse text-xs">
-                            <thead>
-                                <tr class="bg-slate-100 text-slate-600 uppercase font-bold sticky top-0">
-                                    <th class="p-2">Cód.</th>
-                                    <th class="p-2">Cód. Ant.</th>
-                                    <th class="p-2">Abreviación</th>
-                                    <th class="p-2">Lote</th>
-                                    <th class="p-2">Vencimiento</th>
-                                    <th class="p-2 text-right">Stock</th>
-                                    <th class="p-2 text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaRegistrosBody" class="divide-y divide-slate-200">
-                                <tr>
-                                    <td colspan="7" class="text-center text-slate-400 py-4">No hay líneas añadidas en esta sesión.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Sección Inventarios Guardados -->
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
-                    <div class="flex justify-between items-center border-b pb-3 mb-4">
-                        <h2 class="text-base font-semibold text-slate-700">📂 Inventarios Guardados (Cabeceras)</h2>
-                        <span id="contadorInventariosGuardados" class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full">0 guardados</span>
-                    </div>
-
-                    <div class="flex-1 overflow-x-auto max-h-80">
-                        <div id="listaInventariosGuardados" class="flex flex-col gap-3">
-                            <p class="text-center text-slate-400 py-4 text-xs">No hay inventarios guardados todavía.</p>
+                    <div class="flex-1 overflow-x-auto max-h-60">
+                        <div id="listaPedidosGuardados" class="flex flex-col gap-3">
+                            <p class="text-center text-slate-400 py-4 text-xs">No hay pedidos guardados todavía.</p>
                         </div>
                     </div>
                 </div>
-
-            </section>
+            </div>
 
         </main>
 
@@ -234,27 +318,30 @@
         let masterAlmacenes = JSON.parse(localStorage.getItem('master_almacenes')) || [];
         let sesionActual = JSON.parse(localStorage.getItem('sesion_actual')) || [];
         let inventariosGuardados = JSON.parse(localStorage.getItem('inventarios_guardados')) || [];
+        let pedidosGuardados = JSON.parse(localStorage.getItem('pedidos_guardados')) || [];
+        
         let articuloSeleccionado = null;
         let editIndexLinea = null;
         let editInventarioId = null;
 
-        document.getElementById('txtFecha').valueAsDate = new Date();
+        // Variables de Pedido
+        let proveedorSeleccionado = '';
+        let cantidadesPedido = {}; // Clave: 'Artículo #', Valor: cantidad
+        let editPedidoId = null;   // ID del pedido que se está editando
+
+        document.getElementById('txtFechaInv').valueAsDate = new Date();
         document.getElementById('txtVencimiento').value = '';
 
         // Advertencia ante cierre o refresco de página si hay datos sin guardar
         window.addEventListener('beforeunload', (e) => {
-            const hayDatosEscritos = document.getElementById('txtResponsable').value.trim() !== '' || 
-                                     document.getElementById('txtBusqueda').value.trim() !== '' || 
-                                     document.getElementById('txtLote').value.trim() !== '' || 
-                                     document.getElementById('txtStock').value.trim() !== '' || 
-                                     sesionActual.length > 0;
-            if (hayDatosEscritos) {
+            const hayDatosInv = document.getElementById('txtResponsable').value.trim() !== '' || sesionActual.length > 0;
+            const hayDatosPed = Object.keys(cantidadesPedido).length > 0 || document.getElementById('txtBusquedaProv').value.trim() !== '';
+            if (hayDatosInv || hayDatosPed) {
                 e.preventDefault();
                 e.returnValue = '';
             }
         });
 
-        // Carga automática de los Excel maestros desde el repositorio al iniciar
         async function cargarMaestrosAutomaticos() {
             try {
                 const resArt = await fetch('MASTER_ARTICULOS.xlsx');
@@ -264,7 +351,6 @@
                     masterArticulos = XLSX.utils.sheet_to_json(wbArt.Sheets[wbArt.SheetNames[0]]);
                     localStorage.setItem('master_articulos', JSON.stringify(masterArticulos));
                 }
-
                 const resAlm = await fetch('MASTER_ALMACENES.xlsx');
                 if (resAlm.ok) {
                     const bufAlm = await resAlm.arrayBuffer();
@@ -273,18 +359,16 @@
                     localStorage.setItem('master_almacenes', JSON.stringify(masterAlmacenes));
                 }
             } catch (e) {
-                console.log('Usando datos maestros en caché local (modo offline).');
+                console.log('Modo offline detectado.');
             }
-
-            renderizarGruposYAlmacenes();
+            inicializarSelects();
             renderizarTablaSesion();
             renderizarInventariosGuardados();
+            renderizarPedidosGuardados();
             actualizarContadoresUI();
         }
 
-        window.addEventListener('load', () => {
-            cargarMaestrosAutomaticos();
-        });
+        window.addEventListener('load', cargarMaestrosAutomaticos);
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
@@ -296,73 +380,54 @@
             document.getElementById('statusAlm').textContent = `${masterAlmacenes.length} cargados`;
         }
 
+        function mostrarPantallaInicio() {
+            document.getElementById('viewInicio').classList.remove('hidden');
+            document.getElementById('viewInicio').classList.add('flex');
+            document.getElementById('viewInventario').classList.add('hidden');
+            document.getElementById('viewInventario').classList.remove('grid');
+            document.getElementById('viewPedidos').classList.add('hidden');
+            document.getElementById('viewPedidos').classList.remove('flex');
+            document.getElementById('lblModuloActivo').textContent = 'Menú Principal';
+            document.getElementById('btnNavInv').classList.remove('hidden');
+            document.getElementById('btnNavPed').classList.remove('hidden');
+        }
+
+        function cambiarModulo(mod) {
+            document.getElementById('viewInicio').classList.add('hidden');
+            document.getElementById('viewInicio').classList.remove('flex');
+            document.getElementById('btnNavInv').classList.remove('hidden');
+            document.getElementById('btnNavPed').classList.remove('hidden');
+
+            if (mod === 'inventario') {
+                document.getElementById('viewInventario').classList.remove('hidden');
+                document.getElementById('viewInventario').classList.add('grid');
+                document.getElementById('viewPedidos').classList.add('hidden');
+                document.getElementById('viewPedidos').classList.remove('flex');
+                document.getElementById('lblModuloActivo').textContent = 'Módulo: Inventarios';
+            } else if (mod === 'pedidos') {
+                document.getElementById('viewPedidos').classList.remove('hidden');
+                document.getElementById('viewPedidos').classList.add('flex');
+                document.getElementById('viewInventario').classList.add('hidden');
+                document.getElementById('viewInventario').classList.remove('grid');
+                document.getElementById('lblModuloActivo').textContent = 'Módulo: Pedidos';
+                renderizarPedidosGuardados();
+            }
+        }
+
         function cargarMasterAlmacenesManual(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                masterAlmacenes = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const wb = XLSX.read(data, {type: 'array'});
+                masterAlmacenes = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
                 localStorage.setItem('master_almacenes', JSON.stringify(masterAlmacenes));
-                renderizarGruposYAlmacenes();
+                inicializarSelects();
                 actualizarContadoresUI();
                 alert(`¡Almacenes cargados con éxito! (${masterAlmacenes.length})`);
             };
             reader.readAsArrayBuffer(file);
-        }
-
-        function renderizarGruposYAlmacenes() {
-            const selGrupo = document.getElementById('selGrupo');
-            const valorGrupoActual = selGrupo.value;
-            
-            const gruposSet = new Set();
-            masterAlmacenes.forEach(alm => {
-                const g = alm['GRUPO'] || alm['Grupo'] || alm['grupo'];
-                if (g !== undefined && g !== null && String(g).trim() !== '') {
-                    gruposSet.add(String(g).trim());
-                }
-            });
-            
-            selGrupo.innerHTML = '<option value="">Todos los grupos...</option>';
-            Array.from(gruposSet).sort().forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g;
-                opt.textContent = g;
-                selGrupo.appendChild(opt);
-            });
-            if (valorGrupoActual) selGrupo.value = valorGrupoActual;
-            
-            renderizarAlmacenes();
-        }
-
-        function filtrarAlmacenesPorGrupo() {
-            renderizarAlmacenes();
-        }
-
-        function renderizarAlmacenes() {
-            const selGrupoVal = document.getElementById('selGrupo').value;
-            const selAlm = document.getElementById('selAlmacen');
-            const valorAlmActual = selAlm.value;
-            
-            selAlm.innerHTML = '<option value="">Seleccione almacén...</option>';
-            
-            const almacenesFiltrados = masterAlmacenes.filter(alm => {
-                if (!selGrupoVal) return true;
-                const g = String(alm['GRUPO'] || alm['Grupo'] || alm['grupo'] || '').trim();
-                return g === selGrupoVal;
-            });
-            
-            almacenesFiltrados.forEach(alm => {
-                const cod = alm['Almacén #'] || alm['Almacen #'] || '';
-                const nom = alm['Nombre Fiscal *'] || alm['Nombre'] || cod;
-                const opt = document.createElement('option');
-                opt.value = cod;
-                opt.textContent = `[${cod}] ${nom}`;
-                selAlm.appendChild(opt);
-            });
-            
-            if (valorAlmActual) selAlm.value = valorAlmActual;
         }
 
         function cargarMasterArticulosManual(event) {
@@ -371,8 +436,8 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                masterArticulos = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const wb = XLSX.read(data, {type: 'array'});
+                masterArticulos = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
                 localStorage.setItem('master_articulos', JSON.stringify(masterArticulos));
                 actualizarContadoresUI();
                 alert(`¡Artículos cargados con éxito! (${masterArticulos.length})`);
@@ -380,43 +445,101 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // BÚSQUEDA CORREGIDA (Exige que las palabras COMIENCEN por los términos buscados o coincidan por prefijo)
-        function filtrarArticulos() {
-            const queryRaw = document.getElementById('txtBusqueda').value.trim().toLowerCase();
-            const contenedor = document.getElementById('listaSugerencias');
+        function inicializarSelects() {
+            const selGrupo = document.getElementById('selGrupoInv');
+            const gruposSet = new Set();
+            masterAlmacenes.forEach(alm => {
+                const g = alm['GRUPO'] || alm['Grupo'] || alm['grupo'];
+                if (g) gruposSet.add(String(g).trim());
+            });
+            selGrupo.innerHTML = '<option value="">Todos los grupos...</option>';
+            Array.from(gruposSet).sort().forEach(g => selGrupo.appendChild(new Option(g, g)));
+            filtrarAlmacenesPorGrupo();
+
+            const selGrupoPed = document.getElementById('selGrupoPed');
+            selGrupoPed.innerHTML = '<option value="">Todos los grupos...</option>';
+            Array.from(gruposSet).sort().forEach(g => selGrupoPed.appendChild(new Option(g, g)));
+            filtrarAlmacenesPed();
+        }
+
+        function filtrarAlmacenesPorGrupo() {
+            const grupoVal = document.getElementById('selGrupoInv').value;
+            const selAlm = document.getElementById('selAlmacenInv');
+            selAlm.innerHTML = '<option value="">Seleccione almacén...</option>';
+            masterAlmacenes.filter(a => !grupoVal || String(a['GRUPO'] || a['Grupo'] || a['grupo'] || '').trim() === grupoVal)
+                .forEach(a => {
+                    const cod = a['Almacén #'] || a['Almacen #'] || '';
+                    const nom = a['Nombre Fiscal *'] || a['Nombre'] || cod;
+                    selAlm.appendChild(new Option(`[${cod}] ${nom}`, cod));
+                });
+        }
+
+        function filtrarAlmacenesPed() {
+            const grupoVal = document.getElementById('selGrupoPed').value;
+            const selAlm = document.getElementById('selAlmacenPed');
+            selAlm.innerHTML = '<option value="">Seleccione almacén...</option>';
+            masterAlmacenes.filter(a => !grupoVal || String(a['GRUPO'] || a['Grupo'] || a['grupo'] || '').trim() === grupoVal)
+                .forEach(a => {
+                    const cod = a['Almacén #'] || a['Almacen #'] || '';
+                    const nom = a['Nombre Fiscal *'] || a['Nombre'] || cod;
+                    selAlm.appendChild(new Option(`[${cod}] ${nom}`, cod));
+                });
+        }
+
+        // --- BUSCADOR DE PROVEEDORES ---
+        function filtrarProveedores() {
+            const query = document.getElementById('txtBusquedaProv').value.trim().toLowerCase();
+            const cont = document.getElementById('listaSugerenciasProv');
             
-            if (queryRaw.length === 0) {
-                contenedor.classList.add('hidden');
+            const provSet = new Set();
+            masterArticulos.forEach(art => {
+                const prov = art['Nombre'] || art['PROVEEDOR'] || art['Proveedor'];
+                if (prov && String(prov).trim() !== '') provSet.add(String(prov).trim());
+            });
+
+            if (query.length === 0) {
+                cont.classList.add('hidden');
                 return;
             }
 
-            // Dividir por espacios para buscar palabras independientes (ej. "t s" o "tarta alm")
-            const terms = queryRaw.split(/\s+/).filter(t => t.length > 0);
+            const filtrados = Array.from(provSet).filter(p => p.toLowerCase().includes(query)).slice(0, 15);
 
+            if (filtrados.length === 0) {
+                cont.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin proveedores coincidentes.</div>';
+            } else {
+                cont.innerHTML = filtrados.map(p => `
+                    <div onclick="seleccionarProveedor('${p.replace(/'/g, "\\'")}')" class="p-2 hover:bg-emerald-50 cursor-pointer border-b text-xs font-medium text-slate-700">
+                        ${p}
+                    </div>
+                `).join('');
+            }
+            cont.classList.remove('hidden');
+        }
+
+        function seleccionarProveedor(prov) {
+            proveedorSeleccionado = prov;
+            document.getElementById('txtBusquedaProv').value = prov;
+            document.getElementById('listaSugerenciasProv').classList.add('hidden');
+            if (!editPedidoId) cantidadesPedido = {}; 
+            cargarMatrizPedido();
+        }
+
+        // Búsqueda Inventario
+        function filtrarArticulosInventario() {
+            const query = document.getElementById('txtBusquedaArt').value.trim().toLowerCase();
+            const cont = document.getElementById('listaSugerenciasInv');
+            if (query.length === 0) { cont.classList.add('hidden'); return; }
+            const terms = query.split(/\s+/);
             const filtrados = masterArticulos.filter(art => {
-                const abrev = String(art['Abreviación *'] || '').toLowerCase();
-                const cod = String(art['Artículo #'] || '').toLowerCase();
-                const codAntiguo = String(art['Código Antiguo'] || '').toLowerCase();
-                const familia = String(art['Path Familia'] || '').toLowerCase();
-
-                // Obtenemos las palabras individuales de la abreviación
-                const palabrasAbrev = abrev.split(/\s+/);
-
-                // Comprobamos que CADA término de búsqueda coincida con el inicio de alguna palabra de la abreviación,
-                // o bien con el inicio del código o código antiguo (evita falsos positivos en medio de palabras como Mitsu o Panellets)
-                return terms.every(term => {
-                    const coincideInicioPalabraAbrev = palabrasAbrev.some(palabra => palabra.startsWith(term));
-                    const coincideCodigo = cod.startsWith(term) || codAntiguo.startsWith(term);
-                    const coincideFamilia = familia.includes(term);
-                    return coincideInicioPalabraAbrev || coincideCodigo || coincideFamilia;
-                });
+                const text = `${art['Abreviación *'] || ''} ${art['Artículo #'] || ''} ${art['Código Antiguo'] || ''} ${art['Path Familia'] || ''}`.toLowerCase();
+                return terms.every(t => text.includes(t));
             }).slice(0, 15);
 
             if (filtrados.length === 0) {
-                contenedor.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin resultados para la búsqueda.</div>';
+                cont.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin resultados.</div>';
             } else {
-                contenedor.innerHTML = filtrados.map(art => `
-                    <div onclick='seleccionarArticulo(${JSON.stringify(art)})' class="p-2 hover:bg-blue-50 cursor-pointer border-b text-xs flex justify-between">
+                cont.innerHTML = filtrados.map(art => `
+                    <div onclick='seleccionarArticuloInventario(${JSON.stringify(art)})' class="p-2 hover:bg-blue-50 cursor-pointer border-b text-xs flex justify-between">
                         <div>
                             <span class="font-semibold text-slate-800">${art['Abreviación *']}</span>
                             <span class="text-blue-600 font-medium ml-1">[Antiguo: ${art['Código Antiguo'] || 'N/A'}]</span>
@@ -425,141 +548,108 @@
                     </div>
                 `).join('');
             }
-            contenedor.classList.remove('hidden');
+            cont.classList.remove('hidden');
         }
 
-        function seleccionarArticulo(art) {
+        function seleccionarArticuloInventario(art) {
             articuloSeleccionado = art;
-            document.getElementById('txtBusqueda').value = art['Abreviación *'];
+            document.getElementById('txtBusquedaArt').value = art['Abreviación *'];
             document.getElementById('lblArticuloNum').textContent = art['Artículo #'] || '-';
             document.getElementById('lblCodAntiguo').textContent = art['Código Antiguo'] || 'N/A';
             document.getElementById('lblFamilia').textContent = art['Path Familia'] || '-';
-            document.getElementById('listaSugerencias').classList.add('hidden');
+            document.getElementById('listaSugerenciasInv').classList.add('hidden');
             document.getElementById('txtLote').focus();
         }
 
         function guardarRegistroSesion() {
-            const almacen = document.getElementById('selAlmacen').value;
-            const fecha = document.getElementById('txtFecha').value;
+            const almacen = document.getElementById('selAlmacenInv').value;
+            const fecha = document.getElementById('txtFechaInv').value;
             const lote = document.getElementById('txtLote').value.trim().toUpperCase();
             const vencimiento = document.getElementById('txtVencimiento').value;
             const stock = document.getElementById('txtStock').value;
 
             if (!almacen) { alert('Selecciona un almacén.'); return; }
-            if (!fecha) { alert('Indica la fecha del inventario.'); return; }
-            if (!articuloSeleccionado) { alert('Selecciona un artículo válido.'); return; }
-            if (!lote) { alert('El número de lote es obligatorio.'); return; }
-            if (!vencimiento) { alert('Por favor, introduce la fecha de vencimiento del lote.'); return; }
-            if (!stock || isNaN(stock)) { alert('Introduce una cantidad válida.'); return; }
+            if (!fecha) { alert('Indica la fecha.'); return; }
+            if (!articuloSeleccionado) { alert('Selecciona un artículo.'); return; }
+            if (!lote) { alert('Indica el lote.'); return; }
+            if (!vencimiento) { alert('Indica el vencimiento.'); return; }
+            if (!stock || isNaN(stock)) { alert('Cantidad inválida.'); return; }
 
-            const articuloNum = String(articuloSeleccionado['Artículo #']);
-            const cantidadNum = parseFloat(stock);
+            const artNum = String(articuloSeleccionado['Artículo #']);
+            const qty = parseFloat(stock);
 
             if (editIndexLinea !== null) {
                 sesionActual[editIndexLinea] = {
-                    articuloNum: articuloNum,
-                    codAntiguo: articuloSeleccionado['Código Antiguo'] || '',
-                    abreviacion: articuloSeleccionado['Abreviación *'],
-                    familia: articuloSeleccionado['Path Familia'] || '',
-                    lote: lote,
-                    vencimiento: vencimiento,
-                    stock: cantidadNum
+                    articuloNum: artNum, codAntiguo: articuloSeleccionado['Código Antiguo'] || '',
+                    abreviacion: articuloSeleccionado['Abreviación *'], familia: articuloSeleccionado['Path Familia'] || '',
+                    lote, vencimiento, stock: qty
                 };
                 editIndexLinea = null;
-                document.getElementById('badgeModo').textContent = editInventarioId ? 'Modo: Editando Inventario' : 'Modo: Nuevo';
-                document.getElementById('badgeModo').className = editInventarioId ? 'text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold' : 'text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-normal';
+                document.getElementById('badgeModo').textContent = 'Modo: Nuevo';
                 document.getElementById('btnCancelarLinea').classList.add('hidden');
             } else {
-                const indexExistente = sesionActual.findIndex(item => 
-                    String(item.articuloNum) === articuloNum && 
-                    item.lote.trim().toUpperCase() === lote && 
-                    item.vencimiento === vencimiento
-                );
-
-                if (indexExistente !== -1) {
-                    sesionActual[indexExistente].stock += cantidadNum;
-                    alert(`⚠️ Producto ya existente con el mismo lote y vencimiento. Se han sumado ${cantidadNum} unidades (Total: ${sesionActual[indexExistente].stock}).`);
+                const idx = sesionActual.findIndex(i => i.articuloNum === artNum && i.lote === lote && i.vencimiento === vencimiento);
+                if (idx !== -1) {
+                    sesionActual[idx].stock += qty;
+                    alert(`⚠️ Lote existente sumado (${sesionActual[idx].stock}).`);
                 } else {
-                    const nuevoItem = {
-                        articuloNum: articuloNum,
-                        codAntiguo: articuloSeleccionado['Código Antiguo'] || '',
-                        abreviacion: articuloSeleccionado['Abreviación *'],
-                        familia: articuloSeleccionado['Path Familia'] || '',
-                        lote: lote,
-                        vencimiento: vencimiento,
-                        stock: cantidadNum
-                    };
-                    sesionActual.unshift(nuevoItem);
+                    sesionActual.unshift({
+                        articuloNum: artNum, codAntiguo: articuloSeleccionado['Código Antiguo'] || '',
+                        abreviacion: articuloSeleccionado['Abreviación *'], familia: articuloSeleccionado['Path Familia'] || '',
+                        lote, vencimiento, stock: qty
+                    });
                 }
             }
-
-            if (!editInventarioId) {
-                localStorage.setItem('sesion_actual', JSON.stringify(sesionActual));
-            }
+            if (!editInventarioId) localStorage.setItem('sesion_actual', JSON.stringify(sesionActual));
             renderizarTablaSesion();
-            limpiarCamposOperativos();
+            limpiarCamposInv();
         }
 
-        function limpiarCamposOperativos() {
+        function limpiarCamposInv() {
             document.getElementById('txtLote').value = '';
             document.getElementById('txtVencimiento').value = '';
             document.getElementById('txtStock').value = '';
-            document.getElementById('txtBusqueda').value = '';
+            document.getElementById('txtBusquedaArt').value = '';
             document.getElementById('lblArticuloNum').textContent = '-';
             document.getElementById('lblCodAntiguo').textContent = '-';
             document.getElementById('lblFamilia').textContent = '-';
             articuloSeleccionado = null;
-            document.getElementById('txtBusqueda').focus();
+            document.getElementById('txtBusquedaArt').focus();
         }
 
         function renderizarTablaSesion() {
             const tbody = document.getElementById('tablaRegistrosBody');
             document.getElementById('contadorRegistros').textContent = `${sesionActual.length} ítems`;
-
             if (sesionActual.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-400 py-4">No hay líneas añadidas en esta sesión.</td></tr>`;
                 return;
             }
-
-            tbody.innerHTML = sesionActual.map((item, index) => `
-                <tr class="hover:bg-slate-50 transition">
-                    <td class="p-2 font-medium text-slate-900">${item.articuloNum}</td>
+            tbody.innerHTML = sesionActual.map((item, idx) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-2 font-medium">${item.articuloNum}</td>
                     <td class="p-2 font-semibold text-blue-600">${item.codAntiguo || '-'}</td>
-                    <td class="p-2 text-slate-800">${item.abreviacion}</td>
-                    <td class="p-2 font-semibold text-slate-700">${item.lote}</td>
-                    <td class="p-2 text-slate-600">${item.vencimiento}</td>
-                    <td class="p-2 text-right font-bold text-slate-900">${item.stock}</td>
+                    <td class="p-2">${item.abreviacion}</td>
+                    <td class="p-2 font-semibold">${item.lote}</td>
+                    <td class="p-2">${item.vencimiento}</td>
+                    <td class="p-2 text-right font-bold">${item.stock}</td>
                     <td class="p-2 text-center flex justify-center gap-1">
-                        <button onclick="duplicarRegistro(${index})" title="Duplicar artículo y lote" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1 rounded">📋</button>
-                        <button onclick="editarRegistroLinea(${index})" title="Editar línea" class="bg-blue-100 hover:bg-blue-200 text-blue-800 p-1 rounded">✏️</button>
-                        <button onclick="eliminarRegistroLinea(${index})" title="Eliminar línea" class="bg-red-100 hover:bg-red-200 text-red-700 p-1 rounded">🗑️</button>
+                        <button onclick="editarLineaInv(${idx})" class="bg-blue-100 hover:bg-blue-200 text-blue-800 p-1 rounded" title="Editar">✏️</button>
+                        <button onclick="eliminarLineaInv(${idx})" class="bg-red-100 hover:bg-red-200 text-red-700 p-1 rounded" title="Eliminar">🗑️</button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        function duplicarRegistro(index) {
-            const item = sesionActual[index];
-            const artFound = masterArticulos.find(a => String(a['Artículo #']) === String(item.articuloNum));
-            if (artFound) {
-                seleccionarArticulo(artFound);
-            } else {
-                document.getElementById('txtBusqueda').value = item.abreviacion;
-                document.getElementById('lblArticuloNum').textContent = item.articuloNum;
-                document.getElementById('lblCodAntiguo').textContent = item.codAntiguo || 'N/A';
-                document.getElementById('lblFamilia').textContent = item.familia;
-                articuloSeleccionado = { 'Artículo #': item.articuloNum, 'Código Antiguo': item.codAntiguo, 'Abreviación *': item.abreviacion, 'Path Familia': item.familia };
-            }
-            document.getElementById('txtLote').value = item.lote;
-            document.getElementById('txtVencimiento').value = '';
-            document.getElementById('txtStock').value = '';
-            document.getElementById('txtStock').focus();
+        function eliminarLineaInv(idx) {
+            sesionActual.splice(idx, 1);
+            if (!editInventarioId) localStorage.setItem('sesion_actual', JSON.stringify(sesionActual));
+            renderizarTablaSesion();
         }
 
-        function editarRegistroLinea(index) {
-            const item = sesionActual[index];
-            editIndexLinea = index;
-            document.getElementById('txtBusqueda').value = item.abreviacion;
+        function editarLineaInv(idx) {
+            const item = sesionActual[idx];
+            editIndexLinea = idx;
+            document.getElementById('txtBusquedaArt').value = item.abreviacion;
             document.getElementById('lblArticuloNum').textContent = item.articuloNum;
             document.getElementById('lblCodAntiguo').textContent = item.codAntiguo || 'N/A';
             document.getElementById('lblFamilia').textContent = item.familia;
@@ -568,255 +658,385 @@
             document.getElementById('txtStock').value = item.stock;
             articuloSeleccionado = { 'Artículo #': item.articuloNum, 'Código Antiguo': item.codAntiguo, 'Abreviación *': item.abreviacion, 'Path Familia': item.familia };
             document.getElementById('badgeModo').textContent = 'Modo: Editando Línea';
-            document.getElementById('badgeModo').className = 'text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold';
             document.getElementById('btnCancelarLinea').classList.remove('hidden');
         }
 
-        function cancelarEdicionLinea() {
-            editIndexLinea = null;
-            limpiarCamposOperativos();
-            document.getElementById('badgeModo').textContent = editInventarioId ? 'Modo: Editando Inventario' : 'Modo: Nuevo';
-            document.getElementById('badgeModo').className = editInventarioId ? 'text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold' : 'text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-normal';
-            document.getElementById('btnCancelarLinea').classList.add('hidden');
-        }
-
-        function eliminarRegistroLinea(index) {
-            sesionActual.splice(index, 1);
-            if (!editInventarioId) {
-                localStorage.setItem('sesion_actual', JSON.stringify(sesionActual));
-            }
-            renderizarTablaSesion();
-        }
-
-        function editarInventarioGuardado(id) {
-            const inv = inventariosGuardados.find(i => i.id === id);
-            if (!inv) return;
-
-            editInventarioId = id;
-            
-            const almMatch = masterAlmacenes.find(a => String(a['Almacén #'] || a['Almacen #']) === String(inv.almacenCodigo));
-            if (almMatch) {
-                const grupoMatch = almMatch['GRUPO'] || almMatch['Grupo'] || almMatch['grupo'];
-                if (grupoMatch) {
-                    document.getElementById('selGrupo').value = grupoMatch;
-                    filtrarAlmacenesPorGrupo();
-                }
-            }
-            document.getElementById('selAlmacen').value = inv.almacenCodigo;
-            document.getElementById('txtFecha').value = inv.fechaInventario;
-            document.getElementById('txtResponsable').value = inv.responsable;
-            sesionActual = [...inv.items];
-
-            document.getElementById('badgeEditandoInventario').classList.remove('hidden');
-            document.getElementById('btnCancelarInv').classList.remove('hidden');
-            document.getElementById('badgeModo').textContent = 'Modo: Editando Inventario';
-            document.getElementById('badgeModo').className = 'text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold';
-
-            renderizarTablaSesion();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function cancelarEdicionInventario() {
-            if (confirm('¿Deseas cancelar la edición de este inventario? Se perderán los cambios no guardados.')) {
-                editInventarioId = null;
-                sesionActual = JSON.parse(localStorage.getItem('sesion_actual')) || [];
-                document.getElementById('badgeEditandoInventario').classList.add('hidden');
-                document.getElementById('btnCancelarInv').classList.add('hidden');
-                document.getElementById('badgeModo').textContent = 'Modo: Nuevo';
-                document.getElementById('badgeModo').className = 'text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-normal';
-                document.getElementById('txtResponsable').value = '';
-                limpiarCamposOperativos();
-                renderizarTablaSesion();
-            }
-        }
-
         function finalizarYGuardarInventario() {
-            const almacen = document.getElementById('selAlmacen').value;
-            const fechaInv = document.getElementById('txtFecha').value;
+            const almacen = document.getElementById('selAlmacenInv').value;
+            const fechaInv = document.getElementById('txtFechaInv').value;
             const responsable = document.getElementById('txtResponsable').value.trim();
 
-            if (!almacen) { alert('Selecciona un almacén antes de guardar.'); return; }
-            if (!responsable) { alert('El campo Responsable de Inventario es obligatorio.'); return; }
-            if (sesionActual.length === 0) { alert('No hay líneas contadas para guardar.'); return; }
+            if (!almacen) { alert('Selecciona almacén.'); return; }
+            if (!responsable) { alert('Indica el responsable.'); return; }
+            if (sesionActual.length === 0) { alert('No hay líneas.'); return; }
 
             const ahora = new Date();
-            const fechaRegistroStr = ahora.toISOString().slice(0, 10) + ' ' + ahora.toTimeString().slice(0, 5);
+            const fechaReg = ahora.toISOString().slice(0, 10) + ' ' + ahora.toTimeString().slice(0, 5);
 
             if (editInventarioId) {
-                const index = inventariosGuardados.findIndex(i => i.id === editInventarioId);
-                if (index !== -1) {
-                    inventariosGuardados[index].almacenCodigo = almacen;
-                    inventariosGuardados[index].fechaInventario = fechaInv;
-                    inventariosGuardados[index].responsable = responsable;
-                    inventariosGuardados[index].items = [...sesionActual];
+                const i = inventariosGuardados.findIndex(inv => inv.id === editInventarioId);
+                if (i !== -1) {
+                    inventariosGuardados[i] = { ...inventariosGuardados[i], almacenCodigo: almacen, fechaInventario: fechaInv, responsable, items: [...sesionActual] };
                 }
                 editInventarioId = null;
                 document.getElementById('badgeEditandoInventario').classList.add('hidden');
                 document.getElementById('btnCancelarInv').classList.add('hidden');
             } else {
-                const nuevoInventarioGuardado = {
-                    id: Date.now(),
-                    fechaRegistro: fechaRegistroStr,
-                    fechaInventario: fechaInv,
-                    almacenCodigo: almacen,
-                    responsable: responsable,
-                    items: [...sesionActual]
-                };
-                inventariosGuardados.unshift(nuevoInventarioGuardado);
+                inventariosGuardados.unshift({ id: Date.now(), fechaRegistro: fechaReg, fechaInventario: fechaInv, almacenCodigo: almacen, responsable, items: [...sesionActual] });
                 sesionActual = [];
                 localStorage.removeItem('sesion_actual');
             }
-
             localStorage.setItem('inventarios_guardados', JSON.stringify(inventariosGuardados));
             document.getElementById('txtResponsable').value = '';
-            limpiarCamposOperativos();
-            document.getElementById('badgeModo').textContent = 'Modo: Nuevo';
-            document.getElementById('badgeModo').className = 'text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-normal';
-
+            limpiarCamposInv();
             renderizarTablaSesion();
             renderizarInventariosGuardados();
-            alert('¡Inventario guardado correctamente en el historial!');
+            alert('¡Inventario guardado en historial!');
         }
 
         function renderizarInventariosGuardados() {
-            const contenedor = document.getElementById('listaInventariosGuardados');
+            const cont = document.getElementById('listaInventariosGuardados');
             document.getElementById('contadorInventariosGuardados').textContent = `${inventariosGuardados.length} guardados`;
-
             if (inventariosGuardados.length === 0) {
-                contenedor.innerHTML = `<p class="text-center text-slate-400 py-4 text-xs">No hay inventarios guardados todavía.</p>`;
+                cont.innerHTML = `<p class="text-center text-slate-400 py-4 text-xs">No hay inventarios guardados todavía.</p>`;
                 return;
             }
-
-            contenedor.innerHTML = inventariosGuardados.map(inv => `
-                <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 flex flex-col gap-2">
+            cont.innerHTML = inventariosGuardados.map(inv => `
+                <div class="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2">
                     <div class="flex flex-wrap justify-between items-center gap-2">
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <span class="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Almacén: ${inv.almacenCodigo}</span>
-                            <span class="text-xs text-slate-700 font-medium">📅 Inv: ${inv.fechaInventario}</span>
-                            <span class="text-xs text-slate-500">⏱️ Reg: ${inv.fechaRegistro}</span>
-                            <span class="text-xs font-semibold text-slate-700">👤 Resp: ${inv.responsable}</span>
-                            <span class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded">${inv.items.length} líneas</span>
+                        <div class="flex items-center gap-3 text-xs">
+                            <span class="font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Alm: ${inv.almacenCodigo}</span>
+                            <span>📅 ${inv.fechaInventario}</span>
+                            <span>👤 ${inv.responsable}</span>
+                            <span class="bg-slate-200 px-2 py-0.5 rounded font-bold">${inv.items.length} ítems</span>
                         </div>
-                        <div class="flex items-center gap-1.5">
-                            <button onclick="toggleDetalle(${inv.id})" class="text-xs bg-slate-200 hover:bg-slate-300 px-2 py-1 rounded font-medium transition" title="Ver detalles">👁️ Ver</button>
-                            <button onclick="editarInventarioGuardado(${inv.id})" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded font-medium transition" title="Editar inventario completo">✏️ Editar</button>
-                            <button onclick="compartirInventario(${inv.id})" class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded font-medium transition" title="Compartir WhatsApp/Email">📲 Compartir</h4>
-                            <button onclick="exportarExcelInventario(${inv.id})" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded font-medium transition" title="Descargar Excel">📥 Descargar</button>
-                            <button onclick="eliminarInventarioGuardado(${inv.id})" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded font-medium transition" title="Eliminar sesión">🗑️</button>
+                        <div class="flex gap-1">
+                            <button onclick="exportarExcelInventario(${inv.id})" class="bg-blue-600 text-white text-xs px-2 py-1 rounded">📥 Excel</button>
+                            <button onclick="eliminarInventario(${inv.id})" class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded">🗑️</button>
                         </div>
-                    </div>
-                    <!-- Detalle oculto -->
-                    <div id="detalle-${inv.id}" class="hidden overflow-x-auto max-h-40 mt-2 pt-2 border-t border-slate-200">
-                        <table class="w-full text-left text-[11px] border-collapse">
-                            <thead>
-                                <tr class="bg-slate-200 text-slate-700">
-                                    <th class="p-1">Cód.</th>
-                                    <th class="p-1">Cód. Ant.</th>
-                                    <th class="p-1">Abreviación</th>
-                                    <th class="p-1">Lote</th>
-                                    <th class="p-1">Vencimiento</th>
-                                    <th class="p-1 text-right">Stock</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-200">
-                                ${inv.items.map(it => `
-                                    <tr>
-                                        <td class="p-1 font-medium">${it.articuloNum}</td>
-                                        <td class="p-1 font-semibold text-blue-600">${it.codAntiguo || '-'}</td>
-                                        <td class="p-1">${it.abreviacion}</td>
-                                        <td class="p-1 font-semibold">${it.lote}</td>
-                                        <td class="p-1">${it.vencimiento}</td>
-                                        <td class="p-1 text-right font-bold">${it.stock}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             `).join('');
         }
 
-        function toggleDetalle(id) {
-            document.getElementById(`detalle-${id}`).classList.toggle('hidden');
-        }
-
-        function formatearFechaDDMMYYYY(fechaStr) {
-            if (!fechaStr) return '';
-            const partes = fechaStr.split('-');
-            if (partes.length === 3) {
-                return `${partes[2]}/${partes[1]}/${partes[0]}`;
-            }
-            return fechaStr;
-        }
-
-        function generarWorkbookInventario(inv) {
-            const stockPorArticulo = {};
-            inv.items.forEach(item => {
-                const artId = String(item.articuloNum);
-                stockPorArticulo[artId] = (stockPorArticulo[artId] || 0) + Number(item.stock);
-            });
-
-            const datosPlantilla = inv.items.map(item => ({
-                "Almacén": inv.almacenCodigo,
-                "Fecha": formatearFechaDDMMYYYY(inv.fechaInventario),
-                "Artículo": item.articuloNum,
-                "Lote/Serie": item.lote,
-                "Cajas": 0,
-                "Stock": stockPorArticulo[String(item.articuloNum)] || item.stock,
-                "PMP": 0,
-                "U.P. Compra": "",
-                "U.P.Coste": 0,
-                "Stock Lote": item.stock,
-                "Caducidad": formatearFechaDDMMYYYY(item.vencimiento),
-                "Responsable": inv.responsable,
-                "Fecha/Hora Inventario": inv.fechaRegistro
-            }));
-
-            const worksheet = XLSX.utils.json_to_sheet(datosPlantilla);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet");
-            return workbook;
-        }
-
         function exportarExcelInventario(id) {
             const inv = inventariosGuardados.find(i => i.id === id);
             if (!inv) return;
-            const workbook = generarWorkbookInventario(inv);
-            XLSX.writeFile(workbook, `Inventario_${inv.almacenCodigo}_${inv.fechaInventario}.xlsx`);
+            const rows = inv.items.map(it => ({
+                "Almacén": inv.almacenCodigo, "Fecha": inv.fechaInventario, "Artículo": it.articuloNum,
+                "Lote/Serie": it.lote, "Cajas": 0, "Stock": it.stock, "PMP": 0, "U.P. Compra": "", "U.P.Coste": 0,
+                "Stock Lote": it.stock, "Caducidad": it.vencimiento, "Responsable": inv.responsable, "Fecha/Hora Inventario": inv.fechaRegistro
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet");
+            XLSX.writeFile(wb, `Inventario_${inv.almacenCodigo}_${inv.fechaInventario}.xlsx`);
         }
 
-        async function compartirInventario(id) {
-            const inv = inventariosGuardados.find(i => i.id === id);
-            if (!inv) return;
-
-            const workbook = generarWorkbookInventario(inv);
-            const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-            const fileName = `Inventario_${inv.almacenCodigo}_${inv.fechaInventario}.xlsx`;
-            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            const file = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({
-                        title: `Inventario ${inv.almacenCodigo} - ${inv.fechaInventario}`,
-                        text: `Inventario Almacén ${inv.almacenCodigo} (${inv.fechaInventario}). Responsable: ${inv.responsable}.`,
-                        files: [file]
-                    });
-                } catch (err) {
-                    if (err.name !== 'AbortError') exportarExcelInventario(id);
-                }
-            } else {
-                exportarExcelInventario(id);
-                alert('El archivo Excel se ha descargado en tu equipo para adjuntarlo por WhatsApp Web o Email.');
-            }
-        }
-
-        function eliminarInventarioGuardado(id) {
-            if (confirm('¿Estás seguro de eliminar este inventario guardado para liberar espacio?')) {
+        function eliminarInventario(id) {
+            if (confirm('¿Eliminar inventario?')) {
                 inventariosGuardados = inventariosGuardados.filter(i => i.id !== id);
                 localStorage.setItem('inventarios_guardados', JSON.stringify(inventariosGuardados));
                 renderizarInventariosGuardados();
             }
+        }
+
+        // --- MÓDULO DE PEDIDOS ---
+        let articulosProveedorActual = [];
+
+        function cargarMatrizPedido() {
+            if (!proveedorSeleccionado) {
+                document.getElementById('contenedorMatrizPedidos').innerHTML = `<div class="text-center text-slate-400 py-12 text-sm">Selecciona un <b>Proveedor</b> para desplegar la matriz.</div>`;
+                document.getElementById('contadorArticulosProv').textContent = '0 artículos';
+                articulosProveedorActual = [];
+                return;
+            }
+
+            articulosProveedorActual = masterArticulos.filter(art => {
+                const prov = art['Nombre'] || art['PROVEEDOR'] || art['Proveedor'];
+                return prov && String(prov).trim() === proveedorSeleccionado;
+            });
+
+            document.getElementById('contadorArticulosProv').textContent = `${articulosProveedorActual.length} artículos`;
+            renderizarMatrizHTML(articulosProveedorActual);
+        }
+
+        function actualizarCantidadPedido(input, artCod) {
+            const val = parseFloat(input.value);
+            if (!isNaN(val) && val > 0) {
+                cantidadesPedido[artCod] = val;
+            } else {
+                delete cantidadesPedido[artCod];
+            }
+        }
+
+        function renderizarMatrizHTML(lista) {
+            const cont = document.getElementById('contenedorMatrizPedidos');
+            if (lista.length === 0) {
+                cont.innerHTML = `<div class="text-center text-slate-400 py-12 text-sm">No se encontraron artículos para este proveedor.</div>`;
+                return;
+            }
+
+            const familiasMap = {};
+            lista.forEach(art => {
+                const fam = art['Path Familia'] || art['Familia'] || 'SIN FAMILIA';
+                if (!familiasMap[fam]) familiasMap[fam] = [];
+                familiasMap[fam].push(art);
+            });
+
+            let html = `<div class="flex flex-col gap-4">`;
+            for (const [familia, items] of Object.entries(familiasMap)) {
+                html += `
+                    <div class="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                        <div class="bg-slate-100 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
+                            <h3 class="text-xs font-bold text-slate-700 uppercase">📁 ${familia}</h3>
+                            <span class="text-[11px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-semibold">${items.length} ítems</span>
+                        </div>
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                <tr>
+                                    <th class="p-2 w-28">Artículo #</th>
+                                    <th class="p-2">Abreviación / Descripción</th>
+                                    <th class="p-2 w-32 text-right">CANTIDAD A PEDIR</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${items.map(it => {
+                                    const cod = it['Artículo #'] || '';
+                                    const qtyGuardada = cantidadesPedido[cod] !== undefined ? cantidadesPedido[cod] : '';
+                                    return `
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-2 font-medium text-slate-900">${cod}</td>
+                                            <td class="p-2 text-slate-800">${it['Abreviación *'] || it['Nombre'] || ''}</td>
+                                            <td class="p-2 text-right">
+                                                <input type="number" step="any" min="0" value="${qtyGuardada}" oninput="actualizarCantidadPedido(this, '${cod}')" placeholder="0" class="w-24 text-right text-xs border border-slate-300 rounded p-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none font-bold text-emerald-700 bg-emerald-50/30">
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+            cont.innerHTML = html;
+        }
+
+        function filtrarMatrizPedidoUI() {
+            const query = document.getElementById('txtFiltroMatriz').value.toLowerCase();
+            const filtrados = articulosProveedorActual.filter(art => {
+                const text = `${art['Abreviación *'] || ''} ${art['Artículo #'] || ''} ${art['Path Familia'] || ''}`.toLowerCase();
+                return text.includes(query);
+            });
+            renderizarMatrizHTML(filtrados);
+        }
+
+        function obtenerLineasPedidoValidas() {
+            const almacen = document.getElementById('selAlmacenPed').value;
+            if (!proveedorSeleccionado) { alert('Selecciona un proveedor.'); return null; }
+            if (!almacen) { alert('Selecciona el almacén de destino.'); return null; }
+
+            const lineas = [];
+            for (const [artCod, qty] of Object.entries(cantidadesPedido)) {
+                if (qty > 0) {
+                    const artData = masterArticulos.find(a => String(a['Artículo #']) === String(artCod));
+                    if (artData) {
+                        const pathFam = artData['Path Familia'] || artData['Familia'] || 'SIN FAMILIA';
+                        const partesFam = pathFam.split(/[\\/]/);
+                        const familiaCorta = partesFam[partesFam.length - 1].trim();
+
+                        lineas.push({
+                            articuloNum: artData['Artículo #'] || '',
+                            abreviacion: artData['Abreviación *'] || '',
+                            familiaLarga: pathFam,
+                            familiaCorta: familiaCorta,
+                            cantidad: qty
+                        });
+                    }
+                }
+            }
+
+            if (lineas.length === 0) {
+                alert('No has introducido ninguna cantidad mayor a 0 en el pedido.');
+                return null;
+            }
+            return { proveedor: proveedorSeleccionado, almacen, lineas };
+        }
+
+        function guardarPedidoEnHistorial() {
+            const datos = obtenerLineasPedidoValidas();
+            if (!datos) return;
+
+            const ahora = new Date();
+            const fechaReg = ahora.toISOString().slice(0, 10) + ' ' + ahora.toTimeString().slice(0, 5);
+
+            if (editPedidoId) {
+                const i = pedidosGuardados.findIndex(p => p.id === editPedidoId);
+                if (i !== -1) {
+                    pedidosGuardados[i] = {
+                        ...pedidosGuardados[i],
+                        proveedor: datos.proveedor,
+                        almacen: datos.almacen,
+                        items: datos.lineas
+                    };
+                }
+                editPedidoId = null;
+                document.getElementById('badgeEditandoPedido').classList.add('hidden');
+                alert('¡Pedido actualizado con éxito en el historial!');
+            } else {
+                const nuevoPedido = {
+                    id: Date.now(),
+                    fechaRegistro: fechaReg,
+                    proveedor: datos.proveedor,
+                    almacen: datos.almacen,
+                    items: datos.lineas
+                };
+                pedidosGuardados.unshift(nuevoPedido);
+                alert('¡Pedido guardado en el historial correctamente!');
+            }
+
+            localStorage.setItem('pedidos_guardados', JSON.stringify(pedidosGuardados));
+            renderizarPedidosGuardados();
+            limpiarFormularioPedido();
+        }
+
+        function limpiarFormularioPedido() {
+            proveedorSeleccionado = '';
+            cantidadesPedido = {};
+            editPedidoId = null;
+            document.getElementById('txtBusquedaProv').value = '';
+            document.getElementById('selAlmacenPed').value = '';
+            document.getElementById('selGrupoPed').value = '';
+            document.getElementById('badgeEditandoPedido').classList.add('hidden');
+            document.getElementById('contenedorMatrizPedidos').innerHTML = `<div class="text-center text-slate-400 py-12 text-sm">Selecciona un <b>Proveedor</b> en el buscador superior para desplegar la matriz.</div>`;
+            document.getElementById('contadorArticulosProv').textContent = '0 artículos';
+        }
+
+        function renderizarPedidosGuardados() {
+            const cont = document.getElementById('listaPedidosGuardados');
+            document.getElementById('contadorPedidosGuardados').textContent = `${pedidosGuardados.length} guardados`;
+            if (pedidosGuardados.length === 0) {
+                cont.innerHTML = `<p class="text-center text-slate-400 py-4 text-xs">No hay pedidos guardados todavía.</p>`;
+                return;
+            }
+            cont.innerHTML = pedidosGuardados.map(ped => `
+                <div class="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2">
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        <div class="flex items-center gap-3 text-xs">
+                            <span class="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">Prov: ${ped.proveedor}</span>
+                            <span class="font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Alm: ${ped.almacen}</span>
+                            <span>⏱️ ${ped.fechaRegistro}</span>
+                            <span class="bg-slate-200 px-2 py-0.5 rounded font-bold">${ped.items.length} ítems</span>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="editarPedidoGuardado(${ped.id})" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs px-2 py-1 rounded" title="Editar pedido">✏️ Editar</button>
+                            <button onclick="exportarExcelPedidoGuardado(${ped.id})" class="bg-blue-600 text-white text-xs px-2 py-1 rounded" title="Descargar Excel">📥 Excel</button>
+                            <button onclick="exportarPDFPedidoGuardado(${ped.id})" class="bg-red-600 text-white text-xs px-2 py-1 rounded" title="Descargar PDF">📄 PDF</button>
+                            <button onclick="eliminarPedidoGuardado(${ped.id})" class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded" title="Eliminar">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function editarPedidoGuardado(id) {
+            const ped = pedidosGuardados.find(p => p.id === id);
+            if (!ped) return;
+
+            editPedidoId = id;
+            proveedorSeleccionado = ped.proveedor;
+            document.getElementById('txtBusquedaProv').value = ped.proveedor;
+            document.getElementById('selAlmacenPed').value = ped.almacen;
+
+            // Intentar reasignar el grupo de tienda correspondiente
+            const almMatch = masterAlmacenes.find(a => String(a['Almacén #'] || a['Almacen #']) === String(ped.almacen));
+            if (almMatch) {
+                const grupoMatch = almMatch['GRUPO'] || almMatch['Grupo'] || almMatch['grupo'];
+                if (grupoMatch) document.getElementById('selGrupoPed').value = grupoMatch;
+            }
+
+            cantidadesPedido = {};
+            ped.items.forEach(it => {
+                cantidadesPedido[it.articuloNum] = it.cantidad;
+            });
+
+            document.getElementById('badgeEditandoPedido').classList.remove('hidden');
+            cargarMatrizPedido();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function eliminarPedidoGuardado(id) {
+            if (confirm('¿Estás seguro de eliminar este pedido guardado?')) {
+                pedidosGuardados = pedidosGuardados.filter(p => p.id !== id);
+                localStorage.setItem('pedidos_guardados', JSON.stringify(pedidosGuardados));
+                renderizarPedidosGuardados();
+            }
+        }
+
+        function exportarExcelPedidoGuardado(id) {
+            const ped = pedidosGuardados.find(p => p.id === id);
+            if (!ped) return;
+
+            const rows = ped.items.map(l => ({
+                "Proveedor": ped.proveedor,
+                "Almacén Destino": ped.almacen,
+                "Artículo": l.articuloNum,
+                "Familia": l.familiaLarga,
+                "Abreviación": l.abreviacion,
+                "Cantidad Pedida": l.cantidad
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Pedido");
+            const fechaHoy = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Pedido_${ped.proveedor.replace(/[^a-zA-Z0-9]/g, '_')}_Alm_${ped.almacen}_${fechaHoy}.xlsx`);
+        }
+
+        function exportarPDFPedidoGuardado(id) {
+            const ped = pedidosGuardados.find(p => p.id === id);
+            if (!ped) return;
+            crearYDescargarPDF({ proveedor: ped.proveedor, almacen: ped.almacen, lineas: ped.items });
+        }
+
+        function crearYDescargarPDF(datos) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(16);
+            doc.text(`Pedido a Proveedor: ${datos.proveedor}`, 14, 20);
+            
+            doc.setFontSize(10);
+            doc.text(`Almacén Destino: ${datos.almacen}`, 14, 28);
+            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 34);
+
+            let startY = 42;
+            doc.setFontSize(9);
+            doc.setTextColor(100);
+            doc.text("Código", 14, startY);
+            doc.text("Familia / Descripción", 45, startY);
+            doc.text("Cantidad", 180, startY, { align: "right" });
+            
+            doc.setLineWidth(0.5);
+            doc.line(14, startY + 2, 196, startY + 2);
+
+            startY += 8;
+            doc.setTextColor(0);
+
+            datos.lineas.forEach((l) => {
+                if (startY > 270) {
+                    doc.addPage();
+                    startY = 20;
+                }
+                doc.text(String(l.articuloNum), 14, startY);
+                doc.text(`[${l.familiaCorta}] - ${l.abreviacion}`.substring(0, 65), 45, startY);
+                doc.text(String(l.cantidad), 180, startY, { align: "right" });
+                startY += 7;
+            });
+
+            const fechaHoy = new Date().toISOString().slice(0, 10);
+            doc.save(`Pedido_${datos.proveedor.replace(/[^a-zA-Z0-9]/g, '_')}_${fechaHoy}.pdf`);
         }
     </script>
 </body>
