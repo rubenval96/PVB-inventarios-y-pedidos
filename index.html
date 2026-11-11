@@ -18,7 +18,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Header -->
+    <!-- Header con selectores de módulo -->
     <header class="bg-blue-600 text-white shadow-md py-4 px-6 flex justify-between items-center gap-4 z-20">
         <div class="flex items-center gap-3">
             <button onclick="toggleSidebar()" class="bg-blue-700 hover:bg-blue-800 p-2.5 rounded-lg transition focus:outline-none flex items-center justify-center shadow" title="Abrir Menú">
@@ -32,8 +32,9 @@
                 </div>
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <button onclick="cambiarModulo('stock')" id="btnNavStock" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-semibold transition hidden">📊 Inventario y Stock</button>
+        <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="cambiarModulo('inventario')" id="btnNavInv" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-semibold transition hidden">📦 Conteo Rápido</button>
+            <button onclick="cambiarModulo('stock')" id="btnNavStock" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-semibold transition hidden">📊 Stock vs XML</button>
             <button onclick="cambiarModulo('pedidos')" id="btnNavPed" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-semibold transition hidden">🛒 Pedidos</button>
         </div>
     </header>
@@ -72,11 +73,16 @@
 
                 <div>
                     <span class="block text-xs font-bold text-slate-400 uppercase mb-2">3. Stock Actual (XML)</span>
-                    <button onclick="document.getElementById('fileStockXml').click()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2.5 rounded font-medium transition text-left flex items-center justify-between border">
-                        <span>📊 Seleccionar XML</span>
-                        <span id="statusStock" class="text-[10px] text-slate-500">0 lotes</span>
-                    </button>
-                    <input type="file" id="fileStockXml" accept=".xml" class="hidden" onchange="cargarStockXmlManual(event)">
+                    <div class="flex flex-col gap-2">
+                        <button onclick="document.getElementById('fileStockXml').click()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2.5 rounded font-medium transition text-left flex items-center justify-between border">
+                            <span>📊 Subir XML Manual</span>
+                            <span id="statusStock" class="text-[10px] text-slate-500">0 lotes</span>
+                        </button>
+                        <input type="file" id="fileStockXml" accept=".xml" class="hidden" onchange="cargarStockXmlManual(event)">
+                        <button onclick="forzarRecargaStockRemoto()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs px-3 py-2 rounded font-semibold transition border border-blue-200 text-center">
+                            🔄 Forzar Recarga Stock GitHub
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -97,14 +103,24 @@
                     <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-2">¿Qué deseas realizar hoy?</h2>
                     <p class="text-sm text-slate-500">Selecciona el módulo de trabajo correspondiente.</p>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl px-4">
-                    <div onclick="cambiarModulo('stock')" class="bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-500 rounded-2xl p-6 shadow-sm transition cursor-pointer flex flex-col items-center text-center gap-4 group">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-4xl px-4">
+                    <div onclick="cambiarModulo('inventario')" class="bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-500 rounded-2xl p-6 shadow-sm transition cursor-pointer flex flex-col items-center text-center gap-4 group">
                         <div class="w-16 h-16 bg-blue-100 group-hover:bg-blue-600 text-blue-600 group-hover:text-white rounded-2xl flex items-center justify-center text-3xl transition">
+                            📦
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Conteo Rápido</h3>
+                            <p class="text-xs text-slate-500 mt-1">Recuento de inventario libre por líneas y lotes.</p>
+                        </div>
+                    </div>
+
+                    <div onclick="cambiarModulo('stock')" class="bg-white hover:bg-sky-50 border-2 border-slate-200 hover:border-sky-500 rounded-2xl p-6 shadow-sm transition cursor-pointer flex flex-col items-center text-center gap-4 group">
+                        <div class="w-16 h-16 bg-sky-100 group-hover:bg-sky-600 text-sky-600 group-hover:text-white rounded-2xl flex items-center justify-center text-3xl transition">
                             📊
                         </div>
                         <div>
-                            <h3 class="text-lg font-bold text-slate-800">Inventario y Stock</h3>
-                            <p class="text-xs text-slate-500 mt-1">Conteo por lotes filtrando stock cero con control de responsables.</p>
+                            <h3 class="text-lg font-bold text-slate-800">Inventario y Stock XML</h3>
+                            <p class="text-xs text-slate-500 mt-1">Cruzando stock del sistema Marino11 vs recuento físico.</p>
                         </div>
                     </div>
 
@@ -114,13 +130,147 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-slate-800">Módulo de Pedidos</h3>
-                            <p class="text-xs text-slate-500 mt-1">Genera pedidos por proveedor agrupados por familias de forma rápida.</p>
+                            <p class="text-xs text-slate-500 mt-1">Genera pedidos por proveedor agrupados por familias.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- PANTALLA 1: MÓDULO INVENTARIO Y STOCK -->
+            <!-- PANTALLA 1: MÓDULO CONTEO RÁPIDO (INVENTARIOS CLÁSICO) -->
+            <div id="viewInventario" class="hidden grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+                <section class="lg:col-span-1 bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
+                    <h2 class="text-base font-semibold text-slate-700 border-b pb-2 flex justify-between items-center">
+                        <span>📝 Conteo Rápido</span>
+                        <span id="badgeModoInv" class="text-xs px-2.5 py-0.5 rounded bg-slate-100 text-slate-600 font-normal">Modo: Nuevo</span>
+                    </h2>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Tienda / Grupo</label>
+                            <select id="selGrupoInv" onchange="filtrarAlmacenesInv()" class="w-full text-sm border border-slate-300 rounded p-2 bg-slate-50">
+                                <option value="">Todos...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Almacén *</label>
+                            <select id="selAlmacenInv" class="w-full text-sm border border-slate-300 rounded p-2 bg-slate-50">
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Inventario *</label>
+                        <input type="date" id="txtFechaInv" class="w-full text-sm border border-slate-300 rounded p-2 bg-slate-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Responsable *</label>
+                        <input type="text" id="txtResponsableInv" placeholder="Nombre del responsable..." class="w-full text-sm border border-slate-300 rounded p-2">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Scoring) *</label>
+                        <div class="relative">
+                            <input type="text" id="txtBusquedaArtInv" placeholder="Ej. Nu, 10009 o Nombre..." oninput="filtrarArticulosInventario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <div id="listaSugerenciasInv" class="absolute z-10 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded border border-slate-200">
+                        <div>
+                            <span class="block text-[11px] font-bold text-slate-400">CÓDIGO ARTÍCULO</span>
+                            <span id="lblArticuloNumInv" class="text-sm font-semibold text-slate-800">-</span>
+                        </div>
+                        <div>
+                            <span class="block text-[11px] font-bold text-slate-400">CÓD. ANTIGUO</span>
+                            <span id="lblCodAntiguoInv" class="text-sm font-semibold text-blue-600">-</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="block text-[11px] font-bold text-slate-400">FAMILIA (PATH)</span>
+                        <span id="lblFamiliaInv" class="text-xs font-semibold text-slate-700 truncate block">-</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Lote *</label>
+                        <input type="text" id="txtLoteInv" placeholder="Ej. LOTE-2026" class="w-full text-sm border border-slate-300 rounded p-2 uppercase">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Vencimiento *</label>
+                            <input type="date" id="txtVencimientoInv" class="w-full text-sm border border-slate-300 rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Cantidad *</label>
+                            <input type="number" step="any" id="txtStockInv" placeholder="0.00" class="w-full text-sm border border-slate-300 rounded p-2 font-bold text-blue-600">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="guardarRegistroSesionInv()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded text-sm transition shadow">
+                            ➕ Añadir / Consolidar Línea
+                        </button>
+                        <button onclick="cancelarEdicionLineaInv()" id="btnCancelarLineaInv" class="hidden bg-slate-300 hover:bg-slate-400 text-slate-700 font-medium py-2 px-2 rounded text-sm transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </section>
+
+                <section class="lg:col-span-2 flex flex-col gap-6">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                        <div class="flex justify-between items-center border-b pb-3 mb-4">
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-base font-semibold text-slate-700">📋 Conteo Actual en Curso</h2>
+                                <span id="badgeEditandoInv" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">Editando Inventario Guardado</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span id="contadorRegistrosInv" class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">0 ítems</span>
+                                <button onclick="finalizarYGuardarInventarioSesion()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded transition shadow">
+                                    💾 Guardar en Historial
+                                </button>
+                                <button onclick="cancelarEdicionInventarioSesion()" id="btnCancelarInv" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded transition">
+                                    Cancelar Edición
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 overflow-x-auto max-h-64">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-600 uppercase font-bold sticky top-0">
+                                        <th class="p-2">Cód.</th>
+                                        <th class="p-2">Cód. Ant.</th>
+                                        <th class="p-2">Abreviación</th>
+                                        <th class="p-2">Lote</th>
+                                        <th class="p-2">Vencimiento</th>
+                                        <th class="p-2 text-right">Stock</th>
+                                        <th class="p-2 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaRegistrosInvBody" class="divide-y divide-slate-200">
+                                    <tr><td colspan="7" class="text-center text-slate-400 py-4">No hay líneas añadidas en esta sesión.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                        <div class="flex justify-between items-center border-b pb-3 mb-4">
+                            <h2 class="text-base font-semibold text-slate-700">📂 Inventarios Guardados (Conteo Rápido)</h2>
+                            <span id="contadorInventariosGuardados" class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full">0 guardados</span>
+                        </div>
+                        <div class="flex-1 overflow-x-auto max-h-80">
+                            <div id="listaInventariosGuardados" class="flex flex-col gap-3">
+                                <p class="text-center text-slate-400 py-4 text-xs">No hay inventarios guardados todavía.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- PANTALLA 2: MÓDULO INVENTARIO Y STOCK (XML) -->
             <div id="viewStock" class="hidden flex-col gap-6 flex-1">
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-5 gap-4 items-end">
                     <div>
@@ -145,15 +295,15 @@
                     </div>
                     <div>
                         <button onclick="guardarInventarioStock()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 rounded shadow transition">
-                            💾 Guardar Inventario
+                            💾 Guardar Inventario XML
                         </button>
                     </div>
                 </div>
 
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
                     <div class="flex justify-between items-center border-b pb-2">
-                        <h2 class="text-base font-semibold text-slate-700">🔍 Búsqueda y Conteo por Lotes</h2>
-                        <span id="badgeEditandoStock" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">Editando Inventario Guardado</span>
+                        <h2 class="text-base font-semibold text-slate-700">🔍 Búsqueda y Conteo por Lotes (XML Sistema)</h2>
+                        <span id="badgeEditandoStock" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">Editando Inventario XML Guardado</span>
                     </div>
 
                     <div class="relative">
@@ -169,7 +319,7 @@
 
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
                     <div class="flex justify-between items-center border-b pb-3 mb-4">
-                        <h2 class="text-base font-semibold text-slate-700">📂 Historial de Inventarios Realizados</h2>
+                        <h2 class="text-base font-semibold text-slate-700">📂 Historial de Inventarios XML Realizados</h2>
                         <span id="contadorStockGuardados" class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full">0 guardados</span>
                     </div>
                     <div class="flex-1 overflow-x-auto max-h-60">
@@ -180,7 +330,7 @@
                 </div>
             </div>
 
-            <!-- PANTALLA 2: MÓDULO DE PEDIDOS -->
+            <!-- PANTALLA 3: MÓDULO DE PEDIDOS -->
             <div id="viewPedidos" class="hidden flex-col gap-6 flex-1">
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                     <div class="relative">
@@ -240,7 +390,7 @@
 
     </div>
 
-    <!-- MODAL FLOTANTE PARA AÑADIR LOTE NUEVO -->
+    <!-- MODAL FLOTANTE PARA AÑADIR LOTE NUEVO EN STOCK XML -->
     <div id="modalLoteNuevo" class="fixed inset-0 bg-black/40 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 flex flex-col gap-4 border border-slate-200">
             <h3 class="text-base font-bold text-slate-800">➕ Añadir Lote Nuevo (No registrado en Sistema)</h3>
@@ -272,26 +422,40 @@
         </div>
     </div>
 
-    <!-- Script Lógica de la App -->
+    <!-- Script Lógica Unificada de la App -->
     <script>
         let masterArticulos = JSON.parse(localStorage.getItem('master_articulos')) || [];
         let masterAlmacenes = JSON.parse(localStorage.getItem('master_almacenes')) || [];
         let stockXmlData = JSON.parse(localStorage.getItem('stock_xml_data')) || [];
         let fechaXmlReporte = localStorage.getItem('fecha_xml_reporte') || '';
+        
+        let inventariosGuardados = JSON.parse(localStorage.getItem('inventarios_guardados')) || [];
         let inventariosStockGuardados = JSON.parse(localStorage.getItem('inventarios_stock_guardados')) || [];
         let pedidosGuardados = JSON.parse(localStorage.getItem('pedidos_guardados')) || [];
 
+        // Módulo Conteo Rápido
+        let sesionStockRapido = JSON.parse(localStorage.getItem('sesion_stock_rapido')) || [];
+        let articuloSeleccionadoInv = null;
+        let editIndexLineaInv = null;
+        let editInventarioInvId = null;
+
+        // Módulo Stock XML
+        let conteoStockActual = JSON.parse(localStorage.getItem('conteo_stock_actual')) || {};
+        let editInventarioStockId = null;
+        let articuloStockActual = null;
+
+        // Módulo Pedidos
         let proveedorSeleccionado = '';
         let cantidadesPedido = {};
         let editPedidoId = null;
 
-        let conteoStockActual = JSON.parse(localStorage.getItem('conteo_stock_actual')) || {};
-        let editInventarioStockId = null;
+        document.getElementById('txtFechaInv').valueAsDate = new Date();
 
         window.addEventListener('beforeunload', (e) => {
+            const hayDatosInv = document.getElementById('txtResponsableInv').value.trim() !== '' || sesionStockRapido.length > 0;
             const hayDatosStock = Object.keys(conteoStockActual).length > 0 || document.getElementById('txtRespStock').value.trim() !== '';
             const hayDatosPed = Object.keys(cantidadesPedido).length > 0 || document.getElementById('txtBusquedaProv').value.trim() !== '';
-            if (hayDatosStock || hayDatosPed) {
+            if (hayDatosInv || hayDatosStock || hayDatosPed) {
                 e.preventDefault();
                 e.returnValue = '';
             }
@@ -302,7 +466,7 @@
                 const resArt = await fetch('MASTER_ARTICULOS.xlsx');
                 if (resArt.ok) {
                     const bufArt = await resArt.arrayBuffer();
-                    const wbArt = XLSX.read(new Uint8Array(bufArt), { type: 'array' });
+                    const wbArt = XLSX.utils.sheet_to_json(wbArt.Sheets[wbArt.SheetNames[0]]);
                     masterArticulos = XLSX.utils.sheet_to_json(wbArt.Sheets[wbArt.SheetNames[0]]);
                     localStorage.setItem('master_articulos', JSON.stringify(masterArticulos));
                 }
@@ -313,18 +477,29 @@
                     masterAlmacenes = XLSX.utils.sheet_to_json(wbAlm.Sheets[wbAlm.SheetNames[0]]);
                     localStorage.setItem('master_almacenes', JSON.stringify(masterAlmacenes));
                 }
-                const resStock = await fetch('STOCK ACTUAL.xml');
-                if (resStock.ok) {
-                    const textXml = await resStock.text();
-                    procesarXmlStock(textXml);
-                }
+                await forzarRecargaStockRemoto(true);
             } catch (e) {
-                console.log('Modo offline / Archivos externos no detectados automáticamente.');
+                console.log('Modo offline detectado.');
             }
             inicializarSelects();
+            renderizarTablaSesionInv();
+            renderizarInventariosGuardados();
             renderizarInventariosStockGuardados();
             renderizarPedidosGuardados();
             actualizarContadoresUI();
+        }
+
+        async function forzarRecargaStockRemoto(silencioso = false) {
+            try {
+                const resStock = await fetch('STOCK ACTUAL.xml?t=' + new Date().getTime());
+                if (resStock.ok) {
+                    const textXml = await resStock.text();
+                    procesarXmlStock(textXml);
+                    if (!silencioso) alert(`¡Stock XML recargado! (${stockXmlData.length} lotes activos).`);
+                }
+            } catch (e) {
+                if (!silencioso) alert('Error al recargar el XML.');
+            }
         }
 
         window.addEventListener('load', cargarMaestrosAutomaticos);
@@ -346,11 +521,14 @@
         function mostrarPantallaInicio() {
             document.getElementById('viewInicio').classList.remove('hidden');
             document.getElementById('viewInicio').classList.add('flex');
+            document.getElementById('viewInventario').classList.add('hidden');
+            document.getElementById('viewInventario').classList.remove('grid');
             document.getElementById('viewStock').classList.add('hidden');
             document.getElementById('viewStock').classList.remove('flex');
             document.getElementById('viewPedidos').classList.add('hidden');
             document.getElementById('viewPedidos').classList.remove('flex');
             document.getElementById('lblModuloActivo').textContent = 'Menú Principal';
+            document.getElementById('btnNavInv').classList.remove('hidden');
             document.getElementById('btnNavStock').classList.remove('hidden');
             document.getElementById('btnNavPed').classList.remove('hidden');
         }
@@ -358,20 +536,28 @@
         function cambiarModulo(mod) {
             document.getElementById('viewInicio').classList.add('hidden');
             document.getElementById('viewInicio').classList.remove('flex');
+            document.getElementById('btnNavInv').classList.remove('hidden');
             document.getElementById('btnNavStock').classList.remove('hidden');
             document.getElementById('btnNavPed').classList.remove('hidden');
 
-            if (mod === 'stock') {
+            document.getElementById('viewInventario').classList.add('hidden');
+            document.getElementById('viewInventario').classList.remove('grid');
+            document.getElementById('viewStock').classList.add('hidden');
+            document.getElementById('viewStock').classList.remove('flex');
+            document.getElementById('viewPedidos').classList.add('hidden');
+            document.getElementById('viewPedidos').classList.remove('flex');
+
+            if (mod === 'inventario') {
+                document.getElementById('viewInventario').classList.remove('hidden');
+                document.getElementById('viewInventario').classList.add('grid');
+                document.getElementById('lblModuloActivo').textContent = 'Módulo: Conteo Rápido';
+            } else if (mod === 'stock') {
                 document.getElementById('viewStock').classList.remove('hidden');
                 document.getElementById('viewStock').classList.add('flex');
-                document.getElementById('viewPedidos').classList.add('hidden');
-                document.getElementById('viewPedidos').classList.remove('flex');
-                document.getElementById('lblModuloActivo').textContent = 'Módulo: Inventario y Stock';
+                document.getElementById('lblModuloActivo').textContent = 'Módulo: Inventario y Stock XML';
             } else if (mod === 'pedidos') {
                 document.getElementById('viewPedidos').classList.remove('hidden');
                 document.getElementById('viewPedidos').classList.add('flex');
-                document.getElementById('viewStock').classList.add('hidden');
-                document.getElementById('viewStock').classList.remove('flex');
                 document.getElementById('lblModuloActivo').textContent = 'Módulo: Pedidos';
                 renderizarPedidosGuardados();
             }
@@ -383,13 +569,13 @@
             const nodes = xmlDoc.getElementsByTagName("usM6LEC_Inventarios_Exportar");
             
             stockXmlData = [];
+            fechaXmlReporte = '';
+
             for (let i = 0; i < nodes.length; i++) {
                 const node = nodes[i];
                 const getVal = (tag) => node.getElementsByTagName(tag)[0] ? node.getElementsByTagName(tag)[0].textContent : '';
-                
                 const stockLoteVal = parseFloat(getVal('StockRealLote')) || 0;
                 
-                // FILTRO DE STOCK CERO: Omitimos lotes con 0 o negativos para limpiar información innecesaria
                 if (stockLoteVal > 0) {
                     const item = {
                         almacen: getVal('Almacén'),
@@ -400,12 +586,8 @@
                         stockRealLote: stockLoteVal,
                         caducidad: getVal('Caducidad')
                     };
-                    if (item.articulo && item.articulo !== '-') {
-                        stockXmlData.push(item);
-                    }
-                    if (item.fecha && !fechaXmlReporte) {
-                        fechaXmlReporte = item.fecha;
-                    }
+                    if (item.articulo && item.articulo !== '-') stockXmlData.push(item);
+                    if (item.fecha && !fechaXmlReporte) fechaXmlReporte = item.fecha;
                 }
             }
             localStorage.setItem('stock_xml_data', JSON.stringify(stockXmlData));
@@ -419,7 +601,7 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 procesarXmlStock(e.target.result);
-                alert(`¡Stock XML cargado con éxito! Se han filtrado los lotes en cero. Lotes activos: ${stockXmlData.length}. Fecha: ${fechaXmlReporte.slice(0,10)}`);
+                alert(`¡XML cargado! Lotes activos (>0): ${stockXmlData.length}. Fecha: ${fechaXmlReporte.slice(0,10)}`);
             };
             reader.readAsText(file);
         }
@@ -454,20 +636,38 @@
         }
 
         function inicializarSelects() {
-            const selGrupo = document.getElementById('selGrupoStock');
             const gruposSet = new Set();
             masterAlmacenes.forEach(alm => {
                 const g = alm['GRUPO'] || alm['Grupo'] || alm['grupo'];
                 if (g) gruposSet.add(String(g).trim());
             });
-            selGrupo.innerHTML = '<option value="">Todos...</option>';
-            Array.from(gruposSet).sort().forEach(g => selGrupo.appendChild(new Option(g, g)));
+
+            const selGrupoInv = document.getElementById('selGrupoInv');
+            selGrupoInv.innerHTML = '<option value="">Todos...</option>';
+            Array.from(gruposSet).sort().forEach(g => selGrupoInv.appendChild(new Option(g, g)));
+            filtrarAlmacenesInv();
+
+            const selGrupoStock = document.getElementById('selGrupoStock');
+            selGrupoStock.innerHTML = '<option value="">Todos...</option>';
+            Array.from(gruposSet).sort().forEach(g => selGrupoStock.appendChild(new Option(g, g)));
             filtrarAlmacenesStock();
 
             const selGrupoPed = document.getElementById('selGrupoPed');
             selGrupoPed.innerHTML = '<option value="">Todos los grupos...</option>';
             Array.from(gruposSet).sort().forEach(g => selGrupoPed.appendChild(new Option(g, g)));
             filtrarAlmacenesPed();
+        }
+
+        function filtrarAlmacenesInv() {
+            const grupoVal = document.getElementById('selGrupoInv').value;
+            const selAlm = document.getElementById('selAlmacenInv');
+            selAlm.innerHTML = '<option value="">Seleccione almacén...</option>';
+            masterAlmacenes.filter(a => !grupoVal || String(a['GRUPO'] || a['Grupo'] || a['grupo'] || '').trim() === grupoVal)
+                .forEach(a => {
+                    const cod = a['Almacén #'] || a['Almacen #'] || '';
+                    const nom = a['Nombre Fiscal *'] || a['Nombre'] || cod;
+                    selAlm.appendChild(new Option(`[${cod}] ${nom}`, cod));
+                });
         }
 
         function filtrarAlmacenesStock() {
@@ -494,50 +694,282 @@
                 });
         }
 
-        // --- BÚSQUEDA INTELIGENTE CON SCORING RIGUROSO ---
+        // --- BÚSQUEDA INTELIGENTE SCORING COMÚN ---
+        function calcularPuntuacionArticulo(art, queryRaw) {
+            const abrev = String(art['Abreviación *'] || '').toLowerCase();
+            const cod = String(art['Artículo #'] || '').toLowerCase();
+            const codAntiguo = String(art['Código Antiguo'] || '').toLowerCase();
+            const familia = String(art['Path Familia'] || '').toLowerCase();
+
+            let score = 0;
+            if (codAntiguo === queryRaw) score += 3000;
+            else if (codAntiguo.startsWith(queryRaw)) score += 2500;
+            else if (codAntiguo.includes(queryRaw)) score += 2000;
+
+            if (cod === queryRaw) score += 2400;
+            else if (cod.startsWith(queryRaw)) score += 1900;
+            else if (cod.includes(queryRaw)) score += 1500;
+
+            if (abrev === queryRaw) score += 1000;
+            else if (abrev.startsWith(queryRaw)) score += 800;
+            else {
+                const palabras = abrev.split(/\s+/);
+                if (palabras.some(p => p.startsWith(queryRaw))) score += 600;
+                else if (abrev.includes(queryRaw)) score += 100;
+            }
+            if (familia.includes(queryRaw)) score += 50;
+            return score;
+        }
+
+        // --- MÓDULO 1: CONTEO RÁPIDO ---
+        function filtrarArticulosInventario() {
+            const queryRaw = document.getElementById('txtBusquedaArtInv').value.trim().toLowerCase();
+            const cont = document.getElementById('listaSugerenciasInv');
+            if (queryRaw.length === 0) { cont.classList.add('hidden'); return; }
+
+            const filtrados = masterArticulos.map(art => ({ art, score: calcularPuntuacionArticulo(art, queryRaw) }))
+                .filter(i => i.score > 0).sort((a, b) => b.score - a.score).slice(0, 15).map(i => i.art);
+
+            if (filtrados.length === 0) {
+                cont.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin resultados.</div>';
+            } else {
+                cont.innerHTML = filtrados.map(art => `
+                    <div onclick='seleccionarArticuloInv(${JSON.stringify(art)})' class="p-2 hover:bg-blue-50 cursor-pointer border-b text-xs flex justify-between">
+                        <div>
+                            <span class="font-semibold text-slate-800">${art['Abreviación *']}</span>
+                            <span class="text-blue-600 font-medium ml-1">[Antiguo: ${art['Código Antiguo'] || 'N/A'}]</span>
+                        </div>
+                        <span class="text-slate-500">[Cód: ${art['Artículo #']}]</span>
+                    </div>
+                `).join('');
+            }
+            cont.classList.remove('hidden');
+        }
+
+        function seleccionarArticuloInv(art) {
+            articuloSeleccionadoInv = art;
+            document.getElementById('txtBusquedaArtInv').value = art['Abreviación *'];
+            document.getElementById('lblArticuloNumInv').textContent = art['Artículo #'] || '-';
+            document.getElementById('lblCodAntiguoInv').textContent = art['Código Antiguo'] || 'N/A';
+            document.getElementById('lblFamiliaInv').textContent = art['Path Familia'] || '-';
+            document.getElementById('listaSugerenciasInv').classList.add('hidden');
+            document.getElementById('txtLoteInv').focus();
+        }
+
+        function guardarRegistroSesionInv() {
+            const almacen = document.getElementById('selAlmacenInv').value;
+            const fecha = document.getElementById('txtFechaInv').value;
+            const resp = document.getElementById('txtResponsableInv').value.trim();
+            const lote = document.getElementById('txtLoteInv').value.trim().toUpperCase();
+            const vencimiento = document.getElementById('txtVencimientoInv').value;
+            const stock = document.getElementById('txtStockInv').value;
+
+            if (!almacen) { alert('Selecciona un almacén.'); return; }
+            if (!fecha) { alert('Indica la fecha.'); return; }
+            if (!resp) { alert('Indica el responsable.'); return; }
+            if (!articuloSeleccionadoInv) { alert('Selecciona un artículo.'); return; }
+            if (!lote) { alert('Indica el lote.'); return; }
+            if (!vencimiento) { alert('Indica el vencimiento.'); return; }
+            if (!stock || isNaN(stock)) { alert('Cantidad inválida.'); return; }
+
+            const artNum = String(articuloSeleccionadoInv['Artículo #']);
+            const qty = parseFloat(stock);
+
+            if (editIndexLineaInv !== null) {
+                sesionStockRapido[editIndexLineaInv] = {
+                    articuloNum: artNum, codAntiguo: articuloSeleccionadoInv['Código Antiguo'] || '',
+                    abreviacion: articuloSeleccionadoInv['Abreviación *'], familia: articuloSeleccionadoInv['Path Familia'] || '',
+                    lote, vencimiento, stock: qty
+                };
+                editIndexLineaInv = null;
+                document.getElementById('badgeModoInv').textContent = 'Modo: Nuevo';
+                document.getElementById('btnCancelarLineaInv').classList.add('hidden');
+            } else {
+                sesionStockRapido.unshift({
+                    articuloNum: artNum, codAntiguo: articuloSeleccionadoInv['Código Antiguo'] || '',
+                    abreviacion: articuloSeleccionadoInv['Abreviación *'], familia: articuloSeleccionadoInv['Path Familia'] || '',
+                    lote, vencimiento, stock: qty
+                });
+            }
+            if (!editInventarioInvId) localStorage.setItem('sesion_stock_rapido', JSON.stringify(sesionStockRapido));
+            renderizarTablaSesionInv();
+            limpiarCamposInv();
+        }
+
+        function limpiarCamposInv() {
+            document.getElementById('txtLoteInv').value = '';
+            document.getElementById('txtVencimientoInv').value = '';
+            document.getElementById('txtStockInv').value = '';
+            document.getElementById('txtBusquedaArtInv').value = '';
+            document.getElementById('lblArticuloNumInv').textContent = '-';
+            document.getElementById('lblCodAntiguoInv').textContent = '-';
+            document.getElementById('lblFamiliaInv').textContent = '-';
+            articuloSeleccionadoInv = null;
+        }
+
+        function renderizarTablaSesionInv() {
+            const tbody = document.getElementById('tablaRegistrosInvBody');
+            document.getElementById('contadorRegistrosInv').textContent = `${sesionStockRapido.length} ítems`;
+            if (sesionStockRapido.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-400 py-4">No hay líneas añadidas en esta sesión.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = sesionStockRapido.map((item, idx) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-2 font-medium">${item.articuloNum}</td>
+                    <td class="p-2 font-semibold text-blue-600">${item.codAntiguo || '-'}</td>
+                    <td class="p-2">${item.abreviacion}</td>
+                    <td class="p-2 font-semibold">${item.lote}</td>
+                    <td class="p-2">${item.vencimiento}</td>
+                    <td class="p-2 text-right font-bold">${item.stock}</td>
+                    <td class="p-2 text-center flex justify-center gap-1">
+                        <button onclick="editarLineaInv(${idx})" class="bg-blue-100 hover:bg-blue-200 text-blue-800 p-1 rounded" title="Editar">✏️</button>
+                        <button onclick="eliminarLineaInv(${idx})" class="bg-red-100 hover:bg-red-200 text-red-700 p-1 rounded" title="Eliminar">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function eliminarLineaInv(idx) {
+            sesionStockRapido.splice(idx, 1);
+            if (!editInventarioInvId) localStorage.setItem('sesion_stock_rapido', JSON.stringify(sesionStockRapido));
+            renderizarTablaSesionInv();
+        }
+
+        function editarLineaInv(idx) {
+            const item = sesionStockRapido[idx];
+            editIndexLineaInv = idx;
+            document.getElementById('txtBusquedaArtInv').value = item.abreviacion;
+            document.getElementById('lblArticuloNumInv').textContent = item.articuloNum;
+            document.getElementById('lblCodAntiguoInv').textContent = item.codAntiguo || 'N/A';
+            document.getElementById('lblFamiliaInv').textContent = item.familia;
+            document.getElementById('txtLoteInv').value = item.lote;
+            document.getElementById('txtVencimientoInv').value = item.vencimiento;
+            document.getElementById('txtStockInv').value = item.stock;
+            articuloSeleccionadoInv = { 'Artículo #': item.articuloNum, 'Código Antiguo': item.codAntiguo, 'Abreviación *': item.abreviacion, 'Path Familia': item.familia };
+            document.getElementById('badgeModoInv').textContent = 'Modo: Editando Línea';
+            document.getElementById('btnCancelarLineaInv').classList.remove('hidden');
+        }
+
+        function finalizarYGuardarInventarioSesion() {
+            const almacen = document.getElementById('selAlmacenInv').value;
+            const fechaInv = document.getElementById('txtFechaInv').value;
+            const responsable = document.getElementById('txtResponsableInv').value.trim();
+
+            if (!almacen) { alert('Selecciona almacén.'); return; }
+            if (!responsable) { alert('Indica el responsable.'); return; }
+            if (sesionStockRapido.length === 0) { alert('No hay líneas.'); return; }
+
+            const ahora = new Date();
+            const fechaReg = ahora.toISOString().slice(0, 10) + ' ' + ahora.toTimeString().slice(0, 5);
+
+            if (editInventarioInvId) {
+                const i = inventariosGuardados.findIndex(inv => inv.id === editInventarioInvId);
+                if (i !== -1) {
+                    inventariosGuardados[i] = { ...inventariosGuardados[i], almacenCodigo: almacen, fechaInventario: fechaInv, responsable, items: [...sesionStockRapido] };
+                }
+                editInventarioInvId = null;
+                document.getElementById('badgeEditandoInv').classList.add('hidden');
+                document.getElementById('btnCancelarInv').classList.add('hidden');
+            } else {
+                inventariosGuardados.unshift({ id: Date.now(), fechaRegistro: fechaReg, fechaInventario: fechaInv, almacenCodigo: almacen, responsable, items: [...sesionStockRapido] });
+                sesionStockRapido = [];
+                localStorage.removeItem('sesion_stock_rapido');
+            }
+            localStorage.setItem('inventarios_guardados', JSON.stringify(inventariosGuardados));
+            document.getElementById('txtResponsableInv').value = '';
+            limpiarCamposInv();
+            renderizarTablaSesionInv();
+            renderizarInventariosGuardados();
+            alert('¡Conteo rápido guardado en el historial!');
+        }
+
+        function renderizarInventariosGuardados() {
+            const cont = document.getElementById('listaInventariosGuardados');
+            document.getElementById('contadorInventariosGuardados').textContent = `${inventariosGuardados.length} guardados`;
+            if (inventariosGuardados.length === 0) {
+                cont.innerHTML = `<p class="text-center text-slate-400 py-4 text-xs">No hay inventarios guardados todavía.</p>`;
+                return;
+            }
+            cont.innerHTML = inventariosGuardados.map(inv => `
+                <div class="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2">
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        <div class="flex items-center gap-3 text-xs">
+                            <span class="font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Alm: ${inv.almacenCodigo}</span>
+                            <span>📅 ${inv.fechaInventario}</span>
+                            <span>👤 ${inv.responsable}</span>
+                            <span class="bg-slate-200 px-2 py-0.5 rounded font-bold">${inv.items.length} ítems</span>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="editarInventarioSesion(${inv.id})" class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded font-semibold">✏️ Editar</button>
+                            <button onclick="exportarExcelInventarioRapido(${inv.id})" class="bg-blue-600 text-white text-xs px-2 py-1 rounded">📥 Excel</button>
+                            <button onclick="eliminarInventarioSesion(${inv.id})" class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function editarInventarioSesion(id) {
+            const inv = inventariosGuardados.find(i => i.id === id);
+            if (!inv) return;
+            editInventarioInvId = id;
+            document.getElementById('selAlmacenInv').value = inv.almacenCodigo;
+            document.getElementById('txtFechaInv').value = inv.fechaInventario;
+            document.getElementById('txtResponsableInv').value = inv.responsable;
+            sesionStockRapido = [...inv.items];
+            
+            const almMatch = masterAlmacenes.find(a => String(a['Almacén #'] || a['Almacen #']) === String(inv.almacenCodigo));
+            if (almMatch) {
+                const g = almMatch['GRUPO'] || almMatch['Grupo'] || almMatch['grupo'];
+                if (g) document.getElementById('selGrupoInv').value = g;
+            }
+
+            document.getElementById('badgeEditandoInv').classList.remove('hidden');
+            document.getElementById('btnCancelarInv').classList.remove('hidden');
+            renderizarTablaSesionInv();
+            cambiarModulo('inventario');
+        }
+
+        function cancelarEdicionInventarioSesion() {
+            editInventarioInvId = null;
+            sesionStockRapido = [];
+            document.getElementById('badgeEditandoInv').classList.add('hidden');
+            document.getElementById('btnCancelarInv').classList.add('hidden');
+            renderizarTablaSesionInv();
+        }
+
+        function exportarExcelInventarioRapido(id) {
+            const inv = inventariosGuardados.find(i => i.id === id);
+            if (!inv) return;
+            const rows = inv.items.map(it => ({
+                "Almacén": inv.almacenCodigo, "Fecha": inv.fechaInventario, "Artículo": it.articuloNum,
+                "Abreviación": it.abreviacion, "Lote/Serie": it.lote, "Cajas": 0, "Stock": it.stock, "PMP": 0,
+                "U.P. Compra": "", "U.P.Coste": 0, "Stock Lote": it.stock, "Caducidad": it.vencimiento,
+                "Responsable": inv.responsable, "Fecha/Hora Inventario": inv.fechaRegistro
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet");
+            XLSX.writeFile(wb, `InventarioRapido_${inv.almacenCodigo}_${inv.fechaInventario}.xlsx`);
+        }
+
+        function eliminarInventarioSesion(id) {
+            if (confirm('¿Eliminar inventario?')) {
+                inventariosGuardados = inventariosGuardados.filter(i => i.id !== id);
+                localStorage.setItem('inventarios_guardados', JSON.stringify(inventariosGuardados));
+                renderizarInventariosGuardados();
+            }
+        }
+
+        // --- MÓDULO 2: INVENTARIO Y STOCK (XML) ---
         function filtrarArticulosStock() {
             const queryRaw = document.getElementById('txtBusqStockArt').value.trim().toLowerCase();
             const cont = document.getElementById('sugerenciasStockArt');
             if (queryRaw.length === 0) { cont.classList.add('hidden'); return; }
 
-            const resultadosPuntuados = masterArticulos.map(art => {
-                const abrev = String(art['Abreviación *'] || '').toLowerCase();
-                const cod = String(art['Artículo #'] || '').toLowerCase();
-                const codAntiguo = String(art['Código Antiguo'] || '').toLowerCase();
-                const familia = String(art['Path Familia'] || '').toLowerCase();
-
-                let score = 0;
-
-                if (codAntiguo === queryRaw) score += 3000;
-                else if (codAntiguo.startsWith(queryRaw)) score += 2500;
-                else if (codAntiguo.includes(queryRaw)) score += 2000;
-
-                if (cod === queryRaw) score += 2400;
-                else if (cod.startsWith(queryRaw)) score += 1900;
-                else if (cod.includes(queryRaw)) score += 1500;
-
-                if (abrev === queryRaw) score += 1000;
-                else if (abrev.startsWith(queryRaw)) score += 800;
-                else {
-                    const palabrasAbrev = abrev.split(/\s+/);
-                    const iniciaAlgunaPalabra = palabrasAbrev.some(p => p.startsWith(queryRaw));
-                    if (iniciaAlgunaPalabra) {
-                        score += 600;
-                    } else if (abrev.includes(queryRaw)) {
-                        score += 100;
-                    }
-                }
-
-                if (familia.includes(queryRaw)) score += 50;
-
-                return { art, score };
-            });
-
-            const filtrados = resultadosPuntuados
-                .filter(item => item.score > 0)
-                .sort((a, b) => b.score - a.score)
-                .slice(0, 15)
-                .map(item => item.art);
+            const filtrados = masterArticulos.map(art => ({ art, score: calcularPuntuacionArticulo(art, queryRaw) }))
+                .filter(i => i.score > 0).sort((a, b) => b.score - a.score).slice(0, 15).map(i => i.art);
 
             if (filtrados.length === 0) {
                 cont.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin resultados.</div>';
@@ -555,7 +987,6 @@
             cont.classList.remove('hidden');
         }
 
-        let articuloStockActual = null;
         function seleccionarArticuloStock(art) {
             articuloStockActual = art;
             document.getElementById('txtBusqStockArt').value = art['Abreviación *'];
@@ -601,12 +1032,8 @@
                 
                 if (conteoStockActual[key] === undefined) {
                     conteoStockActual[key] = {
-                        articuloNum: artNum,
-                        abreviacion: abreviacion,
-                        lote: l.lote,
-                        caducidad: l.caducidad || '',
-                        stockSistema: stockSys,
-                        stockReal: stockSys
+                        articuloNum: artNum, abreviacion: abreviacion, lote: l.lote,
+                        caducidad: l.caducidad || '', stockSistema: stockSys, stockReal: stockSys
                     };
                 }
                 const stockRealVal = conteoStockActual[key].stockReal;
@@ -640,7 +1067,7 @@
             });
 
             if (lotesXml.length === 0 && lotesKeysEnConteo.length === 0) {
-                html += `<tr><td colspan="4" class="text-center text-slate-400 py-4">No hay lotes activos en el XML para este almacén. Usa el botón "Añadir Lote Nuevo".</td></tr>`;
+                html += `<tr><td colspan="4" class="text-center text-slate-400 py-4">No hay lotes con stock en el XML para este almacén. Usa el botón "Añadir Lote Nuevo".</td></tr>`;
             }
 
             html += `</tbody></table>`;
@@ -656,12 +1083,8 @@
             localStorage.setItem('conteo_stock_actual', JSON.stringify(conteoStockActual));
         }
 
-        // --- MODAL DE LOTE NUEVO ---
         function abrirModalLoteNuevo() {
-            if (!articuloStockActual) {
-                alert('Primero debes buscar y seleccionar un artículo.');
-                return;
-            }
+            if (!articuloStockActual) { alert('Selecciona un artículo primero.'); return; }
             document.getElementById('modalTxtLote').value = '';
             document.getElementById('modalTxtCaducidad').value = '';
             document.getElementById('modalTxtCantidad').value = '';
@@ -678,26 +1101,22 @@
             const cadVal = document.getElementById('modalTxtCaducidad').value;
             const cantVal = parseFloat(document.getElementById('modalTxtCantidad').value);
 
-            if (!loteVal) { alert('El número de lote es obligatorio.'); return; }
-            if (!cadVal) { alert('Selecciona una fecha de caducidad con el calendario.'); return; }
-            if (isNaN(cantVal) || cantVal < 0) { alert('Introduce una cantidad válida.'); return; }
+            if (!loteVal) { alert('El lote es obligatorio.'); return; }
+            if (!cadVal) { alert('Selecciona la caducidad.'); return; }
+            if (isNaN(cantVal) || cantVal < 0) { alert('Cantidad inválida.'); return; }
 
             const artNum = String(articuloStockActual['Artículo #']);
             const abreviacion = articuloStockActual['Abreviación *'] || '';
             const key = `${artNum}_${loteVal}`;
 
             conteoStockActual[key] = {
-                articuloNum: artNum,
-                abreviacion: abreviacion,
-                lote: loteVal,
-                caducidad: cadVal,
-                stockSistema: 0,
-                stockReal: cantVal
+                articuloNum: artNum, abreviacion: abreviacion, lote: loteVal,
+                caducidad: cadVal, stockSistema: 0, stockReal: cantVal
             };
 
             localStorage.setItem('conteo_stock_actual', JSON.stringify(conteoStockActual));
             cerrarModalLoteNuevo();
-            alert('¡Lote nuevo añadido e integrado correctamente!');
+            alert('¡Lote nuevo añadido correctamente!');
             renderizarLotesArticulo(articuloStockActual);
         }
 
@@ -705,9 +1124,9 @@
             const almacen = document.getElementById('selAlmacenStock').value;
             const responsable = document.getElementById('txtRespStock').value.trim();
 
-            if (!almacen) { alert('Selecciona un almacén.'); return; }
-            if (!responsable) { alert('El campo Responsable es obligatorio.'); return; }
-            if (Object.keys(conteoStockActual).length === 0) { alert('No hay ningún artículo contado.'); return; }
+            if (!almacen) { alert('Selecciona almacén.'); return; }
+            if (!responsable) { alert('Indica el responsable.'); return; }
+            if (Object.keys(conteoStockActual).length === 0) { alert('No hay ítems contados.'); return; }
 
             const ahora = new Date();
             const fechaReg = ahora.toISOString().slice(0, 10) + ' ' + ahora.toTimeString().slice(0, 5);
@@ -715,25 +1134,14 @@
             if (editInventarioStockId) {
                 const idx = inventariosStockGuardados.findIndex(i => i.id === editInventarioStockId);
                 if (idx !== -1) {
-                    inventariosStockGuardados[idx] = {
-                        ...inventariosStockGuardados[idx],
-                        almacen,
-                        responsable,
-                        items: { ...conteoStockActual }
-                    };
+                    inventariosStockGuardados[idx] = { ...inventariosStockGuardados[idx], almacen, responsable, items: { ...conteoStockActual } };
                 }
                 editInventarioStockId = null;
                 document.getElementById('badgeEditandoStock').classList.add('hidden');
-                alert('¡Inventario y Stock actualizado con éxito!');
+                alert('¡Inventario XML actualizado!');
             } else {
-                inventariosStockGuardados.unshift({
-                    id: Date.now(),
-                    fechaRegistro: fechaReg,
-                    almacen,
-                    responsable,
-                    items: { ...conteoStockActual }
-                });
-                alert('¡Inventario y Stock guardado en el historial!');
+                inventariosStockGuardados.unshift({ id: Date.now(), fechaRegistro: fechaReg, almacen, responsable, items: { ...conteoStockActual } });
+                alert('¡Inventario XML guardado en historial!');
             }
 
             localStorage.setItem('inventarios_stock_guardados', JSON.stringify(inventariosStockGuardados));
@@ -749,80 +1157,44 @@
             const cont = document.getElementById('listaStockGuardados');
             document.getElementById('contadorStockGuardados').textContent = `${inventariosStockGuardados.length} guardados`;
             if (inventariosStockGuardados.length === 0) {
-                cont.innerHTML = `<p class="text-center text-slate-400 py-4 text-xs">No hay inventarios guardados todavía.</p>`;
+                cont.innerHTML = `<p class="text-center text-slate-400 py-4 text-xs">No hay inventarios XML guardados.</p>`;
                 return;
             }
             cont.innerHTML = inventariosStockGuardados.map(inv => `
-                <div class="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2">
-                    <div class="flex flex-wrap justify-between items-center gap-2">
-                        <div class="flex items-center gap-3 text-xs">
-                            <span class="font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Alm: ${inv.almacen}</span>
-                            <span>👤 Resp: ${inv.responsable}</span>
-                            <span>⏱️ ${inv.fechaRegistro}</span>
-                            <span class="bg-slate-200 px-2 py-0.5 rounded font-bold">${Object.keys(inv.items).length} lotes contados</span>
-                        </div>
-                        <div class="flex gap-1">
-                            <button onclick="editarInventarioStock(${inv.id})" class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded font-semibold">✏️ Editar</button>
-                            <button onclick="exportarExcelInventarioStock(${inv.id})" class="bg-blue-600 text-white text-xs px-2 py-1 rounded font-semibold">📥 Excel</button>
-                            <button onclick="eliminarInventarioStock(${inv.id})" class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded">🗑️</button>
-                        </div>
+                <div class="border rounded-lg p-3 bg-slate-50 flex justify-between items-center text-xs">
+                    <div><b>Alm:</b> ${inv.almacen} | 👤 ${inv.responsable} | ⏱️ ${inv.fechaRegistro} | <span class="font-bold">${Object.keys(inv.items).length} lotes</span></div>
+                    <div class="flex gap-1">
+                        <button onclick="exportarExcelInventarioStock(${inv.id})" class="bg-blue-600 text-white px-2 py-1 rounded font-semibold">📥 Excel</button>
+                        <button onclick="eliminarInventarioStock(${inv.id})" class="bg-red-100 text-red-700 px-2 py-1 rounded">🗑️</button>
                     </div>
                 </div>
             `).join('');
         }
 
-        function editarInventarioStock(id) {
+        function exportarExcelInventarioStock(id) {
             const inv = inventariosStockGuardados.find(i => i.id === id);
             if (!inv) return;
-
-            editInventarioStockId = id;
-            document.getElementById('selAlmacenStock').value = inv.almacen;
-            document.getElementById('txtRespStock').value = inv.responsable;
-            conteoStockActual = { ...inv.items };
-
-            const almMatch = masterAlmacenes.find(a => String(a['Almacén #'] || a['Almacen #']) === String(inv.almacen));
-            if (almMatch) {
-                const g = almMatch['GRUPO'] || almMatch['Grupo'] || almMatch['grupo'];
-                if (g) document.getElementById('selGrupoStock').value = g;
-            }
-
-            document.getElementById('badgeEditandoStock').classList.remove('hidden');
-            alert('Inventario cargado para edición. Busca un artículo para ver sus lotes.');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const rows = Object.values(inv.items).map(it => ({
+                "Almacén": inv.almacen, "Artículo": it.articuloNum, "Abreviación": it.abreviacion,
+                "Lote": it.lote, "Caducidad": it.caducidad, "Stock Sistema": it.stockSistema,
+                "Stock Real (Físico)": it.stockReal, "Diferencia": it.stockReal - it.stockSistema,
+                "Responsable": inv.responsable, "Fecha Registro": inv.fechaRegistro
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Inventario_Stock");
+            XLSX.writeFile(wb, `Inventario_StockXML_${inv.almacen}_${inv.fechaRegistro.slice(0,10)}.xlsx`);
         }
 
         function eliminarInventarioStock(id) {
-            if (confirm('¿Eliminar este inventario guardado?')) {
+            if (confirm('¿Eliminar inventario XML?')) {
                 inventariosStockGuardados = inventariosStockGuardados.filter(i => i.id !== id);
                 localStorage.setItem('inventarios_stock_guardados', JSON.stringify(inventariosStockGuardados));
                 renderizarInventariosStockGuardados();
             }
         }
 
-        function exportarExcelInventarioStock(id) {
-            const inv = inventariosStockGuardados.find(i => i.id === id);
-            if (!inv) return;
-
-            const rows = Object.values(inv.items).map(it => ({
-                "Almacén": inv.almacen,
-                "Artículo": it.articuloNum,
-                "Abreviación": it.abreviacion,
-                "Lote": it.lote,
-                "Caducidad": it.caducidad,
-                "Stock Sistema": it.stockSistema,
-                "Stock Real (Físico)": it.stockReal,
-                "Diferencia": it.stockReal - it.stockSistema,
-                "Responsable": inv.responsable,
-                "Fecha Registro": inv.fechaRegistro
-            }));
-
-            const ws = XLSX.utils.json_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Inventario_Stock");
-            XLSX.writeFile(wb, `Inventario_Stock_${inv.almacen}_${inv.fechaRegistro.slice(0,10)}.xlsx`);
-        }
-
-        // --- MÓDULO DE PEDIDOS ---
+        // --- MÓDULO 3: PEDIDOS ---
         function filtrarProveedores() {
             const query = document.getElementById('txtBusquedaProv').value.trim().toLowerCase();
             const cont = document.getElementById('listaSugerenciasProv');
