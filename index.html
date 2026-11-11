@@ -72,15 +72,17 @@
                 </div>
 
                 <div>
-                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">3. Stock Actual (XML)</span>
+                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">3. Sincronización Global</span>
                     <div class="flex flex-col gap-2">
                         <button onclick="document.getElementById('fileStockXml').click()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2.5 rounded font-medium transition text-left flex items-center justify-between border">
-                            <span>📊 Subir XML Manual</span>
+                            <span>📊 Subir XML Stock Manual</span>
                             <span id="statusStock" class="text-[10px] text-slate-500">0 lotes</span>
                         </button>
                         <input type="file" id="fileStockXml" accept=".xml" class="hidden" onchange="cargarStockXmlManual(event)">
-                        <button onclick="forzarRecargaStockRemoto()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs px-3 py-2 rounded font-semibold transition border border-blue-200 text-center">
-                            🔄 Forzar Recarga Stock GitHub
+                        
+                        <!-- Botón maestro para forzar la recarga de TODOS los archivos desde GitHub -->
+                        <button onclick="forzarRecargaTodosRemoto()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2.5 rounded font-bold transition shadow text-center">
+                            🔄 Forzar Recarga Total (GitHub)
                         </button>
                     </div>
                 </div>
@@ -466,15 +468,13 @@
                 const resArt = await fetch('MASTER_ARTICULOS.xlsx');
                 if (resArt.ok) {
                     const bufArt = await resArt.arrayBuffer();
-                    const wbArt = XLSX.utils.sheet_to_json(wbArt.Sheets[wbArt.SheetNames[0]]);
-                    masterArticulos = XLSX.utils.sheet_to_json(wbArt.Sheets[wbArt.SheetNames[0]]);
+                    masterArticulos = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(bufArt), { type: 'array' }).Sheets[XLSX.read(new Uint8Array(bufArt), { type: 'array' }).SheetNames[0]]);
                     localStorage.setItem('master_articulos', JSON.stringify(masterArticulos));
                 }
                 const resAlm = await fetch('MASTER_ALMACENES.xlsx');
                 if (resAlm.ok) {
                     const bufAlm = await resAlm.arrayBuffer();
-                    const wbAlm = XLSX.read(new Uint8Array(bufAlm), { type: 'array' });
-                    masterAlmacenes = XLSX.utils.sheet_to_json(wbAlm.Sheets[wbAlm.SheetNames[0]]);
+                    masterAlmacenes = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(bufAlm), { type: 'array' }).Sheets[XLSX.read(new Uint8Array(bufAlm), { type: 'array' }).SheetNames[0]]);
                     localStorage.setItem('master_almacenes', JSON.stringify(masterAlmacenes));
                 }
                 await forzarRecargaStockRemoto(true);
@@ -491,11 +491,14 @@
 
         async function forzarRecargaStockRemoto(silencioso = false) {
             try {
+                // Parámetro anti-caché ?t=timestamp para forzar a GitHub Pages y navegador a traer el nuevo XML
                 const resStock = await fetch('STOCK ACTUAL.xml?t=' + new Date().getTime());
                 if (resStock.ok) {
                     const textXml = await resStock.text();
                     procesarXmlStock(textXml);
                     if (!silencioso) alert(`¡Stock XML recargado! (${stockXmlData.length} lotes activos).`);
+                } else if (!silencioso) {
+                    alert('No se encontró STOCK ACTUAL.xml en la raíz.');
                 }
             } catch (e) {
                 if (!silencioso) alert('Error al recargar el XML.');
@@ -694,7 +697,6 @@
                 });
         }
 
-        // --- BÚSQUEDA INTELIGENTE SCORING COMÚN ---
         function calcularPuntuacionArticulo(art, queryRaw) {
             const abrev = String(art['Abreviación *'] || '').toLowerCase();
             const cod = String(art['Artículo #'] || '').toLowerCase();
@@ -1081,43 +1083,6 @@
                 conteoStockActual[key].stockReal = !isNaN(val) ? val : 0;
             }
             localStorage.setItem('conteo_stock_actual', JSON.stringify(conteoStockActual));
-        }
-
-        function abrirModalLoteNuevo() {
-            if (!articuloStockActual) { alert('Selecciona un artículo primero.'); return; }
-            document.getElementById('modalTxtLote').value = '';
-            document.getElementById('modalTxtCaducidad').value = '';
-            document.getElementById('modalTxtCantidad').value = '';
-            document.getElementById('modalLoteNuevo').classList.remove('hidden');
-            document.getElementById('modalTxtLote').focus();
-        }
-
-        function cerrarModalLoteNuevo() {
-            document.getElementById('modalLoteNuevo').classList.add('hidden');
-        }
-
-        function confirmarAgregarLoteNuevo() {
-            const loteVal = document.getElementById('modalTxtLote').value.trim().toUpperCase();
-            const cadVal = document.getElementById('modalTxtCaducidad').value;
-            const cantVal = parseFloat(document.getElementById('modalTxtCantidad').value);
-
-            if (!loteVal) { alert('El lote es obligatorio.'); return; }
-            if (!cadVal) { alert('Selecciona la caducidad.'); return; }
-            if (isNaN(cantVal) || cantVal < 0) { alert('Cantidad inválida.'); return; }
-
-            const artNum = String(articuloStockActual['Artículo #']);
-            const abreviacion = articuloStockActual['Abreviación *'] || '';
-            const key = `${artNum}_${loteVal}`;
-
-            conteoStockActual[key] = {
-                articuloNum: artNum, abreviacion: abreviacion, lote: loteVal,
-                caducidad: cadVal, stockSistema: 0, stockReal: cantVal
-            };
-
-            localStorage.setItem('conteo_stock_actual', JSON.stringify(conteoStockActual));
-            cerrarModalLoteNuevo();
-            alert('¡Lote nuevo añadido correctamente!');
-            renderizarLotesArticulo(articuloStockActual);
         }
 
         function guardarInventarioStock() {
