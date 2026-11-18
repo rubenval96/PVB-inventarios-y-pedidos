@@ -72,17 +72,15 @@
                 </div>
 
                 <div>
-                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">3. Sincronización Global</span>
+                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">3. Stock Actual (XML)</span>
                     <div class="flex flex-col gap-2">
                         <button onclick="document.getElementById('fileStockXml').click()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2.5 rounded font-medium transition text-left flex items-center justify-between border">
-                            <span>📊 Subir XML Stock Manual</span>
+                            <span>📊 Subir XML Manual</span>
                             <span id="statusStock" class="text-[10px] text-slate-500">0 lotes</span>
                         </button>
                         <input type="file" id="fileStockXml" accept=".xml" class="hidden" onchange="cargarStockXmlManual(event)">
-                        
-                        <!-- Botón maestro para forzar la recarga de TODOS los archivos desde GitHub -->
-                        <button onclick="forzarRecargaTodosRemoto()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2.5 rounded font-bold transition shadow text-center">
-                            🔄 Forzar Recarga Total (GitHub)
+                        <button onclick="forzarRecargaStockRemoto()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs px-3 py-2 rounded font-semibold transition border border-blue-200 text-center">
+                            🔄 Forzar Recarga Stock GitHub
                         </button>
                     </div>
                 </div>
@@ -112,7 +110,7 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-slate-800">Conteo Rápido</h3>
-                            <p class="text-xs text-slate-500 mt-1">Recuento de inventario libre por líneas y lotes.</p>
+                            <p class="text-xs text-slate-500 mt-1">Recuento de inventario libre por líneas y lotes con sugerencia rápida.</p>
                         </div>
                     </div>
 
@@ -195,7 +193,10 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Lote *</label>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs font-semibold text-slate-600">Lote *</label>
+                            <span id="sugerenciaLoteInfo" class="text-[10px] text-blue-600 cursor-pointer hover:underline hidden" onclick="usarUltimoLote()">🔄 Usar último lote</span>
+                        </div>
                         <input type="text" id="txtLoteInv" placeholder="Ej. LOTE-2026" class="w-full text-sm border border-slate-300 rounded p-2 uppercase">
                     </div>
 
@@ -392,7 +393,7 @@
 
     </div>
 
-    <!-- MODAL FLOTANTE PARA AÑADIR LOTE NUEVO EN STOCK XML -->
+    <!-- MODAL FLOTANTE PARA LOTE NUEVO EN STOCK XML -->
     <div id="modalLoteNuevo" class="fixed inset-0 bg-black/40 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 flex flex-col gap-4 border border-slate-200">
             <h3 class="text-base font-bold text-slate-800">➕ Añadir Lote Nuevo (No registrado en Sistema)</h3>
@@ -440,6 +441,8 @@
         let articuloSeleccionadoInv = null;
         let editIndexLineaInv = null;
         let editInventarioInvId = null;
+        let ultimoLoteUsado = '';
+        let ultimaCaducidadUsada = '';
 
         // Módulo Stock XML
         let conteoStockActual = JSON.parse(localStorage.getItem('conteo_stock_actual')) || {};
@@ -491,7 +494,6 @@
 
         async function forzarRecargaStockRemoto(silencioso = false) {
             try {
-                // Parámetro anti-caché ?t=timestamp para forzar a GitHub Pages y navegador a traer el nuevo XML
                 const resStock = await fetch('STOCK ACTUAL.xml?t=' + new Date().getTime());
                 if (resStock.ok) {
                     const textXml = await resStock.text();
@@ -755,7 +757,22 @@
             document.getElementById('lblCodAntiguoInv').textContent = art['Código Antiguo'] || 'N/A';
             document.getElementById('lblFamiliaInv').textContent = art['Path Familia'] || '-';
             document.getElementById('listaSugerenciasInv').classList.add('hidden');
+            
+            // Sugerir último lote si existe
+            if (ultimoLoteUsado) {
+                document.getElementById('txtLoteInv').value = ultimoLoteUsado;
+                document.getElementById('sugerenciaLoteInfo').classList.remove('hidden');
+            }
+            if (ultimaCaducidadUsada) {
+                document.getElementById('txtVencimientoInv').value = ultimaCaducidadUsada;
+            }
+
             document.getElementById('txtLoteInv').focus();
+        }
+
+        function usarUltimoLote() {
+            if (ultimoLoteUsado) document.getElementById('txtLoteInv').value = ultimoLoteUsado;
+            if (ultimaCaducidadUsada) document.getElementById('txtVencimientoInv').value = ultimaCaducidadUsada;
         }
 
         function guardarRegistroSesionInv() {
@@ -773,6 +790,9 @@
             if (!lote) { alert('Indica el lote.'); return; }
             if (!vencimiento) { alert('Indica el vencimiento.'); return; }
             if (!stock || isNaN(stock)) { alert('Cantidad inválida.'); return; }
+
+            ultimoLoteUsado = lote;
+            ultimaCaducidadUsada = vencimiento;
 
             const artNum = String(articuloSeleccionadoInv['Artículo #']);
             const qty = parseFloat(stock);
@@ -806,6 +826,7 @@
             document.getElementById('lblArticuloNumInv').textContent = '-';
             document.getElementById('lblCodAntiguoInv').textContent = '-';
             document.getElementById('lblFamiliaInv').textContent = '-';
+            document.getElementById('sugerenciaLoteInfo').classList.add('hidden');
             articuloSeleccionadoInv = null;
         }
 
