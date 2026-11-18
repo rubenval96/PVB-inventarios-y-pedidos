@@ -110,7 +110,7 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-slate-800">Conteo Rápido</h3>
-                            <p class="text-xs text-slate-500 mt-1">Recuento de inventario libre por líneas y lotes con sugerencia rápida.</p>
+                            <p class="text-xs text-slate-500 mt-1">Recuento libre con consolidación de lotes y exportación XML Marino.</p>
                         </div>
                     </div>
 
@@ -139,10 +139,10 @@
             <!-- PANTALLA 1: MÓDULO CONTEO RÁPIDO (INVENTARIOS CLÁSICO) -->
             <div id="viewInventario" class="hidden grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
                 <section class="lg:col-span-1 bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
-                    <h2 class="text-base font-semibold text-slate-700 border-b pb-2 flex justify-between items-center">
-                        <span>📝 Conteo Rápido</span>
-                        <span id="badgeModoInv" class="text-xs px-2.5 py-0.5 rounded bg-slate-100 text-slate-600 font-normal">Modo: Nuevo</span>
-                    </h2>
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h2 class="text-base font-semibold text-slate-700">📝 Conteo Rápido</h2>
+                        <span id="badgeModoInv" class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-normal">Modo: Nuevo</span>
+                    </div>
 
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -159,20 +159,26 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Inventario *</label>
-                        <input type="date" id="txtFechaInv" class="w-full text-sm border border-slate-300 rounded p-2 bg-slate-50">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Inventario *</label>
+                            <input type="date" id="txtFechaInv" class="w-full text-sm border border-slate-300 rounded p-2 bg-slate-50">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Responsable *</label>
+                            <input type="text" id="txtResponsableInv" placeholder="Nombre..." class="w-full text-sm border border-slate-300 rounded p-2">
+                        </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Responsable *</label>
-                        <input type="text" id="txtResponsableInv" placeholder="Nombre del responsable..." class="w-full text-sm border border-slate-300 rounded p-2">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Scoring) *</label>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs font-semibold text-slate-600">Buscar Artículo (Scoring) *</label>
+                            <button type="button" onclick="copiarUltimoItemCargado()" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-0.5 rounded font-bold transition flex items-center gap-1 shadow-sm" title="Copia el último ítem y su lote cargado">
+                                📋 Copiar Último
+                            </button>
+                        </div>
                         <div class="relative">
-                            <input type="text" id="txtBusquedaArtInv" placeholder="Ej. Nu, 10009 o Nombre..." oninput="filtrarArticulosInventario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <input type="text" id="txtBusquedaArtInv" placeholder="Ej. X, Pastél Sacher, 10029..." oninput="filtrarArticulosInventario()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             <div id="listaSugerenciasInv" class="absolute z-10 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
                         </div>
                     </div>
@@ -228,10 +234,13 @@
                                 <h2 class="text-base font-semibold text-slate-700">📋 Conteo Actual en Curso</h2>
                                 <span id="badgeEditandoInv" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">Editando Inventario Guardado</span>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <span id="contadorRegistrosInv" class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">0 ítems</span>
                                 <button onclick="finalizarYGuardarInventarioSesion()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded transition shadow">
-                                    💾 Guardar en Historial
+                                    💾 Guardar Historial
+                                </button>
+                                <button onclick="exportarXmlMarinoSesion()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-1.5 rounded transition shadow" title="Exportar en formato XML oficial de Marino11">
+                                    📥 Exportar XML (Marino)
                                 </button>
                                 <button onclick="cancelarEdicionInventarioSesion()" id="btnCancelarInv" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded transition">
                                     Cancelar Edición
@@ -311,7 +320,7 @@
 
                     <div class="relative">
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar Artículo (Cód. Antiguo, Cód. o Nombre) *</label>
-                        <input type="text" id="txtBusqStockArt" placeholder="Ej. Nu, 10009 o Nombre..." oninput="filtrarArticulosStock()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="txtBusqStockArt" placeholder="Ej. X, Pastél Sacher, 10029..." oninput="filtrarArticulosStock()" class="w-full text-sm border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         <div id="sugerenciasStockArt" class="absolute z-20 w-full bg-white border border-slate-300 rounded-b shadow-lg max-h-48 overflow-y-auto hidden"></div>
                     </div>
 
@@ -443,6 +452,7 @@
         let editInventarioInvId = null;
         let ultimoLoteUsado = '';
         let ultimaCaducidadUsada = '';
+        let ultimoItemCargadoObj = null;
 
         // Módulo Stock XML
         let conteoStockActual = JSON.parse(localStorage.getItem('conteo_stock_actual')) || {};
@@ -699,6 +709,7 @@
                 });
         }
 
+        // --- SCORING ROBUSTO Y MEJORADO (PARA PASTEL SACHER / X / ETC.) ---
         function calcularPuntuacionArticulo(art, queryRaw) {
             const abrev = String(art['Abreviación *'] || '').toLowerCase();
             const cod = String(art['Artículo #'] || '').toLowerCase();
@@ -706,28 +717,40 @@
             const familia = String(art['Path Familia'] || '').toLowerCase();
 
             let score = 0;
-            if (codAntiguo === queryRaw) score += 3000;
-            else if (codAntiguo.startsWith(queryRaw)) score += 2500;
-            else if (codAntiguo.includes(queryRaw)) score += 2000;
+            const q = queryRaw.toLowerCase();
 
-            if (cod === queryRaw) score += 2400;
-            else if (cod.startsWith(queryRaw)) score += 1900;
-            else if (cod.includes(queryRaw)) score += 1500;
+            if (codAntiguo === q) score += 5000;
+            else if (codAntiguo.startsWith(q)) score += 4000;
+            else if (codAntiguo.includes(q)) score += 3000;
 
-            if (abrev === queryRaw) score += 1000;
-            else if (abrev.startsWith(queryRaw)) score += 800;
+            if (cod === q) score += 4500;
+            else if (cod.startsWith(q)) score += 3500;
+            else if (cod.includes(q)) score += 2500;
+
+            if (abrev === q) score += 4000;
+            else if (abrev.startsWith(q)) score += 3000;
             else {
-                const palabras = abrev.split(/\s+/);
-                if (palabras.some(p => p.startsWith(queryRaw))) score += 600;
-                else if (abrev.includes(queryRaw)) score += 100;
+                const palabrasAbrev = abrev.split(/\s+/);
+                if (palabrasAbrev.some(p => p.startsWith(q) || p === q)) {
+                    score += 2500;
+                } else if (abrev.includes(q)) {
+                    score += 1500;
+                }
             }
-            if (familia.includes(queryRaw)) score += 50;
+
+            if (familia.includes(q)) score += 200;
+
+            // Soporte especial para búsqueda flexible o letras únicas como "X" o "W"
+            if (q.length === 1 && (abrev.startsWith(q) || codAntiguo.startsWith(q))) {
+                score += 1000;
+            }
+
             return score;
         }
 
         // --- MÓDULO 1: CONTEO RÁPIDO ---
         function filtrarArticulosInventario() {
-            const queryRaw = document.getElementById('txtBusquedaArtInv').value.trim().toLowerCase();
+            const queryRaw = document.getElementById('txtBusquedaArtInv').value.trim();
             const cont = document.getElementById('listaSugerenciasInv');
             if (queryRaw.length === 0) { cont.classList.add('hidden'); return; }
 
@@ -758,7 +781,6 @@
             document.getElementById('lblFamiliaInv').textContent = art['Path Familia'] || '-';
             document.getElementById('listaSugerenciasInv').classList.add('hidden');
             
-            // Sugerir último lote si existe
             if (ultimoLoteUsado) {
                 document.getElementById('txtLoteInv').value = ultimoLoteUsado;
                 document.getElementById('sugerenciaLoteInfo').classList.remove('hidden');
@@ -773,6 +795,28 @@
         function usarUltimoLote() {
             if (ultimoLoteUsado) document.getElementById('txtLoteInv').value = ultimoLoteUsado;
             if (ultimaCaducidadUsada) document.getElementById('txtVencimientoInv').value = ultimaCaducidadUsada;
+        }
+
+        // Botón Copiar el último ítem cargado (con su referencia y lote)
+        function copiarUltimoItemCargado() {
+            if (sesionStockRapido.length === 0 && !ultimoItemCargadoObj) {
+                alert('No hay ningún ítem previo cargado en esta sesión.');
+                return;
+            }
+            const itemBase = ultimoItemCargadoObj || sesionStockRapido[0];
+            const artMatch = masterArticulos.find(a => String(a['Artículo #']) === String(itemBase.articuloNum)) || {
+                'Artículo #': itemBase.articuloNum,
+                'Código Antiguo': itemBase.codAntiguo,
+                'Abreviación *': itemBase.abreviacion,
+                'Path Familia': itemBase.familia
+            };
+
+            seleccionarArticuloInv(artMatch);
+            document.getElementById('txtLoteInv').value = itemBase.lote;
+            document.getElementById('txtVencimientoInv').value = itemBase.vencimiento || '';
+            document.getElementById('txtStockInv').value = itemBase.stock;
+            document.getElementById('sugerenciaLoteInfo').classList.remove('hidden');
+            alert(`¡Ítem "${itemBase.abreviacion}" copiado con su lote ${itemBase.lote}! Ajusta la cantidad si es necesario.`);
         }
 
         function guardarRegistroSesionInv() {
@@ -797,22 +841,31 @@
             const artNum = String(articuloSeleccionadoInv['Artículo #']);
             const qty = parseFloat(stock);
 
+            ultimoItemCargadoObj = {
+                articuloNum: artNum,
+                codAntiguo: articuloSeleccionadoInv['Código Antiguo'] || '',
+                abreviacion: articuloSeleccionadoInv['Abreviación *'],
+                familia: articuloSeleccionadoInv['Path Familia'] || '',
+                lote, vencimiento, stock: qty
+            };
+
             if (editIndexLineaInv !== null) {
-                sesionStockRapido[editIndexLineaInv] = {
-                    articuloNum: artNum, codAntiguo: articuloSeleccionadoInv['Código Antiguo'] || '',
-                    abreviacion: articuloSeleccionadoInv['Abreviación *'], familia: articuloSeleccionadoInv['Path Familia'] || '',
-                    lote, vencimiento, stock: qty
-                };
+                sesionStockRapido[editIndexLineaInv] = { ...ultimoItemCargadoObj };
                 editIndexLineaInv = null;
                 document.getElementById('badgeModoInv').textContent = 'Modo: Nuevo';
                 document.getElementById('btnCancelarLineaInv').classList.add('hidden');
             } else {
-                sesionStockRapido.unshift({
-                    articuloNum: artNum, codAntiguo: articuloSeleccionadoInv['Código Antiguo'] || '',
-                    abreviacion: articuloSeleccionadoInv['Abreviación *'], familia: articuloSeleccionadoInv['Path Familia'] || '',
-                    lote, vencimiento, stock: qty
-                });
+                // REQUISITO 3: Consolidar si ya existe el mismo artículo con el mismo lote
+                const existingIdx = sesionStockRapido.findIndex(item => String(item.articuloNum) === artNum && String(item.lote).trim().toUpperCase() === lote);
+                if (existingIdx !== -1) {
+                    sesionStockRapido[existingIdx].stock += qty;
+                    if (vencimiento) sesionStockRapido[existingIdx].vencimiento = vencimiento;
+                    alert(`¡El artículo y lote ya existían en la lista! Se han sumado ${qty} unidades (Total: ${sesionStockRapido[existingIdx].stock}).`);
+                } else {
+                    sesionStockRapido.unshift({ ...ultimoItemCargadoObj });
+                }
             }
+
             if (!editInventarioInvId) localStorage.setItem('sesion_stock_rapido', JSON.stringify(sesionStockRapido));
             renderizarTablaSesionInv();
             limpiarCamposInv();
@@ -907,6 +960,77 @@
             alert('¡Conteo rápido guardado en el historial!');
         }
 
+        // REQUISITO 4: EXPORTACIÓN EN FORMATO XML OFICIAL DE MARINO
+        function exportarXmlMarinoSesion() {
+            const almacen = document.getElementById('selAlmacenInv').value || 'CE';
+            const fechaInv = document.getElementById('txtFechaInv').value || new Date().toISOString().slice(0, 10);
+            const fechaIso = fechaInv + 'T00:00:00+01:00';
+
+            if (sesionStockRapido.length === 0) {
+                alert('No hay líneas en la sesión para exportar a XML.');
+                return;
+            }
+
+            // Agrupar stocks totales por artículo para StockReal
+            const stockTotalesArticulo = {};
+            sesionStockRapido.forEach(item => {
+                const art = item.articuloNum;
+                stockTotalesArticulo[art] = (stockTotalesArticulo[art] || 0) + parseFloat(item.stock || 0);
+            });
+
+            let xmlContent = '<?xml version="1.0" standalone="yes"?>\n<NewDataSet>\n';
+
+            // Registro dummy inicial exigido por el formato Marino
+            xmlContent += '  <usM6LEC_Inventarios_Exportar>\n';
+            xmlContent += '    <Almacén>---</Almacén>\n';
+            xmlContent += '    <Artículo>-</Artículo>\n';
+            xmlContent += '    <CajasReales>0</CajasReales>\n';
+            xmlContent += '    <StockReal>0.000000</StockReal>\n';
+            xmlContent += '    <PMPReal>0.000000</PMPReal>\n';
+            xmlContent += '    <UpCompra>0.000000</UpCompra>\n';
+            xmlContent += '    <UPCoste>0.000000</UPCoste>\n';
+            xmlContent += '    <Lote>-</Lote>\n';
+            xmlContent += '    <StockRealLote>0.000000</StockRealLote>\n';
+            xmlContent += '  </usM6LEC_Inventarios_Exportar>\n';
+
+            // Registros reales de conteo con formato de 6 decimales con punto (.)
+            sesionStockRapido.forEach(item => {
+                const stockTot = (stockTotalesArticulo[item.articuloNum] || 0).toFixed(6);
+                const stockLote = parseFloat(item.stock || 0).toFixed(6);
+                const fechaCadIso = item.vencimiento ? item.vencimiento + 'T00:00:00+01:00' : '';
+
+                xmlContent += '  <usM6LEC_Inventarios_Exportar>\n';
+                xmlContent += `    <Almacén>${almacen}</Almacén>\n`;
+                xmlContent += `    <Fecha>${fechaIso}</Fecha>\n`;
+                xmlContent += `    <Artículo>${item.articuloNum}</Artículo>\n`;
+                xmlContent += '    <CajasReales>0</CajasReales>\n';
+                xmlContent += `    <StockReal>${stockTot}</StockReal>\n`;
+                xmlContent += '    <PMPReal>0.000000</PMPReal>\n';
+                xmlContent += '    <UpCompra>0.000000</UpCompra>\n';
+                xmlContent += '    <UPCoste>0.000000</UPCoste>\n';
+                xmlContent += `    <Lote>${item.lote}</Lote>\n`;
+                xmlContent += `    <StockRealLote>${stockLote}</StockRealLote>\n`;
+                if (fechaCadIso) {
+                    xmlContent += `    <Caducidad>${fechaCadIso}</Caducidad>\n`;
+                }
+                xmlContent += '  </usM6LEC_Inventarios_Exportar>\n';
+            });
+
+            xmlContent += '</NewDataSet>';
+
+            // Descargar archivo XML
+            const blob = new Blob([xmlContent], { type: 'application/xml;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `STOCK_ACTUAL_EXPORT_${almacen}_${fechaInv}.xml`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('¡Archivo XML en formato Marino exportado con éxito!');
+        }
+
         function renderizarInventariosGuardados() {
             const cont = document.getElementById('listaInventariosGuardados');
             document.getElementById('contadorInventariosGuardados').textContent = `${inventariosGuardados.length} guardados`;
@@ -987,7 +1111,7 @@
 
         // --- MÓDULO 2: INVENTARIO Y STOCK (XML) ---
         function filtrarArticulosStock() {
-            const queryRaw = document.getElementById('txtBusqStockArt').value.trim().toLowerCase();
+            const queryRaw = document.getElementById('txtBusqStockArt').value.trim();
             const cont = document.getElementById('sugerenciasStockArt');
             if (queryRaw.length === 0) { cont.classList.add('hidden'); return; }
 
@@ -1106,6 +1230,43 @@
             localStorage.setItem('conteo_stock_actual', JSON.stringify(conteoStockActual));
         }
 
+        function abrirModalLoteNuevo() {
+            if (!articuloStockActual) { alert('Selecciona un artículo primero.'); return; }
+            document.getElementById('modalTxtLote').value = '';
+            document.getElementById('modalTxtCaducidad').value = '';
+            document.getElementById('modalTxtCantidad').value = '';
+            document.getElementById('modalLoteNuevo').classList.remove('hidden');
+            document.getElementById('modalTxtLote').focus();
+        }
+
+        function cerrarModalLoteNuevo() {
+            document.getElementById('modalLoteNuevo').classList.add('hidden');
+        }
+
+        function confirmarAgregarLoteNuevo() {
+            const loteVal = document.getElementById('modalTxtLote').value.trim().toUpperCase();
+            const cadVal = document.getElementById('modalTxtCaducidad').value;
+            const cantVal = parseFloat(document.getElementById('modalTxtCantidad').value);
+
+            if (!loteVal) { alert('El lote es obligatorio.'); return; }
+            if (!cadVal) { alert('Selecciona la caducidad.'); return; }
+            if (isNaN(cantVal) || cantVal < 0) { alert('Cantidad inválida.'); return; }
+
+            const artNum = String(articuloStockActual['Artículo #']);
+            const abreviacion = articuloStockActual['Abreviación *'] || '';
+            const key = `${artNum}_${loteVal}`;
+
+            conteoStockActual[key] = {
+                articuloNum: artNum, abreviacion: abreviacion, lote: loteVal,
+                caducidad: cadVal, stockSistema: 0, stockReal: cantVal
+            };
+
+            localStorage.setItem('conteo_stock_actual', JSON.stringify(conteoStockActual));
+            cerrarModalLoteNuevo();
+            alert('¡Lote nuevo añadido correctamente!');
+            renderizarLotesArticulo(articuloStockActual);
+        }
+
         function guardarInventarioStock() {
             const almacen = document.getElementById('selAlmacenStock').value;
             const responsable = document.getElementById('txtRespStock').value.trim();
@@ -1192,7 +1353,7 @@
             if (query.length === 0) { cont.classList.add('hidden'); return; }
             const filtrados = Array.from(provSet).filter(p => p.toLowerCase().includes(query)).slice(0, 15);
             cont.innerHTML = filtrados.length === 0 ? '<div class="p-2 text-xs text-slate-400">Sin proveedores.</div>' : filtrados.map(p => `
-                <div onclick="seleccionarProveedor('${p.replace(/'/g, "\\'")}')" class="p-2 hover:bg-emerald-50 cursor-pointer border-b text-xs font-medium text-slate-700">${p}</div>
+                <div onclick="seleccionarProveedor('${p.replace(/'/g, "\'")}')" class="p-2 hover:bg-emerald-50 cursor-pointer border-b text-xs font-medium text-slate-700">${p}</div>
             `).join('');
             cont.classList.remove('hidden');
         }
