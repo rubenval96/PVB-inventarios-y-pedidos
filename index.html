@@ -8,8 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS para Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- jsPDF para PDF -->
+    <!-- jsPDF y AutoTable para PDF limpio -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
@@ -42,7 +43,7 @@
     <div class="flex flex-1 relative overflow-hidden">
 
         <!-- MENÚ LATERAL -->
-        <aside id="sidebar" class="absolute inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 ease-in-out w-72 bg-white border-r border-slate-200 shadow-xl z-30 flex flex-col p-5 gap-6">
+        <aside id="sidebar" class="absolute inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 ease-in-out w-80 bg-white border-r border-slate-200 shadow-xl z-30 flex flex-col p-5 gap-5 overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3">
                 <h2 class="font-bold text-slate-800 text-sm">⚙️ Configuración y Maestros</h2>
                 <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-600 p-1 rounded font-bold text-lg">✕</button>
@@ -72,22 +73,33 @@
                 </div>
 
                 <div>
-                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">3. Stock Actual (XML)</span>
+                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">3. Sincronización Global (GitHub)</span>
                     <div class="flex flex-col gap-2">
                         <button onclick="document.getElementById('fileStockXml').click()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2.5 rounded font-medium transition text-left flex items-center justify-between border">
-                            <span>📊 Subir XML Manual</span>
+                            <span>📊 Subir XML Stock Manual</span>
                             <span id="statusStock" class="text-[10px] text-slate-500">0 lotes</span>
                         </button>
                         <input type="file" id="fileStockXml" accept=".xml" class="hidden" onchange="cargarStockXmlManual(event)">
-                        <button onclick="forzarRecargaStockRemoto()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs px-3 py-2 rounded font-semibold transition border border-blue-200 text-center">
-                            🔄 Forzar Recarga Stock GitHub
+                        <button onclick="forzarRecargaTodosRemoto()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs px-3 py-2 rounded font-semibold transition border border-blue-200 text-center">
+                            🔄 Forzar Recarga Total (GitHub)
                         </button>
                     </div>
+                </div>
+
+                <!-- CONFIGURACIÓN CLOUD GOOGLE SHEETS PORTABLE -->
+                <div class="border-t pt-3">
+                    <span class="block text-xs font-bold text-emerald-700 uppercase mb-1">4. Conexión Google Sheets (Cloud)</span>
+                    <p class="text-[10px] text-slate-500 mb-2 leading-tight">Pega aquí la URL del Web App (Apps Script). Cambia de cuenta de Gmail en segundos pegando una nueva URL.</p>
+                    <input type="url" id="txtGoogleSheetsUrl" placeholder="https://script.google.com/macros/s/..." class="w-full text-xs border border-slate-300 rounded p-2 mb-2 bg-slate-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <button onclick="guardarUrlGoogleSheets()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded font-bold transition shadow">
+                        ☁️ Guardar URL Cloud
+                    </button>
+                    <span id="statusCloudUrl" class="block text-[10px] text-slate-400 mt-1 text-center">Sin URL configurada</span>
                 </div>
             </div>
 
             <div class="mt-auto border-t pt-4 text-xs text-slate-400">
-                <p>💡 Sincronizado offline con GitHub Pages.</p>
+                <p>💡 Sincronizado offline + Cloud portable.</p>
             </div>
         </aside>
 
@@ -110,7 +122,7 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-slate-800">Conteo Rápido</h3>
-                            <p class="text-xs text-slate-500 mt-1">Recuento libre con consolidación de lotes, Excel y exportación XML Marino.</p>
+                            <p class="text-xs text-slate-500 mt-1">Recuento libre, exportación Excel/XML/PDF desde historial y envío a Google Sheets.</p>
                         </div>
                     </div>
 
@@ -237,10 +249,7 @@
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span id="contadorRegistrosInv" class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">0 ítems</span>
                                 <button onclick="finalizarYGuardarInventarioSesion()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded transition shadow">
-                                    💾 Guardar Historial
-                                </button>
-                                <button onclick="exportarXmlMarinoSesion()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-1.5 rounded transition shadow" title="Exportar en formato XML oficial de Marino11">
-                                    📥 Exportar XML (Marino)
+                                    💾 Guardar en Historial
                                 </button>
                                 <button onclick="cancelarEdicionInventarioSesion()" id="btnCancelarInv" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded transition">
                                     Cancelar Edición
@@ -445,6 +454,9 @@
         let inventariosStockGuardados = JSON.parse(localStorage.getItem('inventarios_stock_guardados')) || [];
         let pedidosGuardados = JSON.parse(localStorage.getItem('pedidos_guardados')) || [];
 
+        // URL Portable de Google Apps Script (Cloud Google Sheets)
+        let googleSheetsWebhookUrl = localStorage.getItem('google_sheets_webhook_url') || '';
+
         // Módulo Conteo Rápido
         let sesionStockRapido = JSON.parse(localStorage.getItem('sesion_stock_rapido')) || [];
         let articuloSeleccionadoInv = null;
@@ -476,21 +488,40 @@
             }
         });
 
+        function inicializarConfigCloud() {
+            const inputUrl = document.getElementById('txtGoogleSheetsUrl');
+            const statusLbl = document.getElementById('statusCloudUrl');
+            if (googleSheetsWebhookUrl) {
+                inputUrl.value = googleSheetsWebhookUrl;
+                statusLbl.textContent = '✅ Conectado a Google Sheets';
+                statusLbl.className = 'block text-[10px] text-emerald-600 font-bold mt-1 text-center';
+            }
+        }
+
+        function guardarUrlGoogleSheets() {
+            const url = document.getElementById('txtGoogleSheetsUrl').value.trim();
+            if (!url) {
+                localStorage.removeItem('google_sheets_webhook_url');
+                googleSheetsWebhookUrl = '';
+                document.getElementById('statusCloudUrl').textContent = 'Sin URL configurada';
+                document.getElementById('statusCloudUrl').className = 'block text-[10px] text-slate-400 mt-1 text-center';
+                alert('URL de Google Sheets eliminada.');
+                return;
+            }
+            if (!url.startsWith('https://script.google.com/')) {
+                alert('Por favor introduce una URL válida de Google Apps Script (debe empezar por https://script.google.com/...).');
+                return;
+            }
+            googleSheetsWebhookUrl = url;
+            localStorage.setItem('google_sheets_webhook_url', url);
+            inicializarConfigCloud();
+            alert('¡URL de Google Sheets guardada con éxito! Ahora puedes enviar cualquier inventario guardado directamente a tu hoja en la nube.');
+        }
+
         async function cargarMaestrosAutomaticos() {
+            inicializarConfigCloud();
             try {
-                const resArt = await fetch('MASTER_ARTICULOS.xlsx');
-                if (resArt.ok) {
-                    const bufArt = await resArt.arrayBuffer();
-                    masterArticulos = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(bufArt), { type: 'array' }).Sheets[XLSX.read(new Uint8Array(bufArt), { type: 'array' }).SheetNames[0]]);
-                    localStorage.setItem('master_articulos', JSON.stringify(masterArticulos));
-                }
-                const resAlm = await fetch('MASTER_ALMACENES.xlsx');
-                if (resAlm.ok) {
-                    const bufAlm = await resAlm.arrayBuffer();
-                    masterAlmacenes = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(bufAlm), { type: 'array' }).Sheets[XLSX.read(new Uint8Array(bufAlm), { type: 'array' }).SheetNames[0]]);
-                    localStorage.setItem('master_almacenes', JSON.stringify(masterAlmacenes));
-                }
-                await forzarRecargaStockRemoto(true);
+                await forzarRecargaTodosRemoto(true);
             } catch (e) {
                 console.log('Modo offline detectado.');
             }
@@ -502,18 +533,35 @@
             actualizarContadoresUI();
         }
 
-        async function forzarRecargaStockRemoto(silencioso = false) {
+        async function forzarRecargaTodosRemoto(silencioso = false) {
+            const ts = new Date().getTime();
             try {
-                const resStock = await fetch('STOCK ACTUAL.xml?t=' + new Date().getTime());
+                const resArt = await fetch('MASTER_ARTICULOS.xlsx?t=' + ts);
+                if (resArt.ok) {
+                    const bufArt = await resArt.arrayBuffer();
+                    const wbArt = XLSX.read(new Uint8Array(bufArt), { type: 'array' });
+                    masterArticulos = XLSX.utils.sheet_to_json(wbArt.Sheets[wbArt.SheetNames[0]]);
+                    localStorage.setItem('master_articulos', JSON.stringify(masterArticulos));
+                }
+                const resAlm = await fetch('MASTER_ALMACENES.xlsx?t=' + ts);
+                if (resAlm.ok) {
+                    const bufAlm = await resAlm.arrayBuffer();
+                    const wbAlm = XLSX.read(new Uint8Array(bufAlm), { type: 'array' });
+                    masterAlmacenes = XLSX.utils.sheet_to_json(wbAlm.Sheets[wbAlm.SheetNames[0]]);
+                    localStorage.setItem('master_almacenes', JSON.stringify(masterAlmacenes));
+                }
+                const resStock = await fetch('STOCK ACTUAL.xml?t=' + ts);
                 if (resStock.ok) {
                     const textXml = await resStock.text();
                     procesarXmlStock(textXml);
-                    if (!silencioso) alert(`¡Stock XML recargado! (${stockXmlData.length} lotes activos).`);
-                } else if (!silencioso) {
-                    alert('No se encontró STOCK ACTUAL.xml en la raíz.');
+                }
+                inicializarSelects();
+                actualizarContadoresUI();
+                if (!silencioso) {
+                    alert(`¡Sincronización Total Completada!\n- Artículos: ${masterArticulos.length}\n- Almacenes: ${masterAlmacenes.length}\n- Lotes XML activos: ${stockXmlData.length}`);
                 }
             } catch (e) {
-                if (!silencioso) alert('Error al recargar el XML.');
+                if (!silencioso) alert('Error al intentar recargar archivos desde GitHub.');
             }
         }
 
@@ -709,7 +757,6 @@
                 });
         }
 
-        // --- SCORING ROBUSTO Y MEJORADO (PARA PASTEL SACHER / X / ETC.) ---
         function calcularPuntuacionArticulo(art, queryRaw) {
             const abrev = String(art['Abreviación *'] || '').toLowerCase();
             const cod = String(art['Artículo #'] || '').toLowerCase();
@@ -853,19 +900,17 @@
                 document.getElementById('badgeModoInv').textContent = 'Modo: Nuevo';
                 document.getElementById('btnCancelarLineaInv').classList.add('hidden');
             } else {
-                // Verificar si existe el mismo artículo y mismo lote
                 const existingIdx = sesionStockRapido.findIndex(item => String(item.articuloNum) === artNum && String(item.lote).trim().toUpperCase() === lote);
                 if (existingIdx !== -1) {
-                    // MEJORA 1: Advertencia si la fecha de caducidad es distinta para el mismo artículo y lote
                     const cadExistente = sesionStockRapido[existingIdx].vencimiento || '';
                     if (cadExistente && vencimiento && cadExistente !== vencimiento) {
-                        const continuar = confirm(`⚠️ ADVERTENCIA: El artículo y lote "${lote}" ya existen en la lista pero con una fecha de caducidad distinta (${cadExistente} vs ${vencimiento}).\n\n¿Deseas continuar y sumar las cantidades de todos modos?`);
+                        const continuar = confirm(`⚠️ ADVERTENCIA: El artículo y lote "${lote}" ya existen en la lista pero con una fecha de caducidad distinta (${cadExistente} vs ${vencimiento}).\n\n¿Deseas continuar y sumar las cantidades en esta misma línea (Aceptar) o cancelar la operación (Cancelar)?`);
                         if (!continuar) return;
                     }
 
                     sesionStockRapido[existingIdx].stock += qty;
                     if (vencimiento) sesionStockRapido[existingIdx].vencimiento = vencimiento;
-                    alert(`¡El artículo y lote ya existían! Se han sumado ${qty} unidades (Total: ${sesionStockRapido[existingIdx].stock}).`);
+                    alert(`¡Consolidado! Se han sumado ${qty} unidades al lote ${lote} (Total: ${sesionStockRapido[existingIdx].stock}).`);
                 } else {
                     sesionStockRapido.unshift({ ...ultimoItemCargadoObj });
                 }
@@ -965,74 +1010,6 @@
             alert('¡Conteo rápido guardado en el historial!');
         }
 
-        // EXPORTACIÓN XML MARINO ESTRICTA (6 decimales, punto decimal, dummy inicial)
-        function exportarXmlMarinoSesion() {
-            const almacen = document.getElementById('selAlmacenInv').value || 'CE';
-            const fechaInv = document.getElementById('txtFechaInv').value || new Date().toISOString().slice(0, 10);
-            const fechaIso = fechaInv + 'T00:00:00+01:00';
-
-            if (sesionStockRapido.length === 0) {
-                alert('No hay líneas en la sesión para exportar a XML.');
-                return;
-            }
-
-            const stockTotalesArticulo = {};
-            sesionStockRapido.forEach(item => {
-                const art = item.articuloNum;
-                stockTotalesArticulo[art] = (stockTotalesArticulo[art] || 0) + parseFloat(item.stock || 0);
-            });
-
-            let xmlContent = '<?xml version="1.0" standalone="yes"?>\n<NewDataSet>\n';
-
-            // Dummy inicial formato Marino
-            xmlContent += '  <usM6LEC_Inventarios_Exportar>\n';
-            xmlContent += '    <Almacén>---</Almacén>\n';
-            xmlContent += '    <Artículo>-</Artículo>\n';
-            xmlContent += '    <CajasReales>0</CajasReales>\n';
-            xmlContent += '    <StockReal>0.000000</StockReal>\n';
-            xmlContent += '    <PMPReal>0.000000</PMPReal>\n';
-            xmlContent += '    <UpCompra>0.000000</UpCompra>\n';
-            xmlContent += '    <UPCoste>0.000000</UPCoste>\n';
-            xmlContent += '    <Lote>-</Lote>\n';
-            xmlContent += '    <StockRealLote>0.000000</StockRealLote>\n';
-            xmlContent += '  </usM6LEC_Inventarios_Exportar>\n';
-
-            sesionStockRapido.forEach(item => {
-                const stockTot = (stockTotalesArticulo[item.articuloNum] || 0).toFixed(6);
-                const stockLote = parseFloat(item.stock || 0).toFixed(6);
-                const fechaCadIso = item.vencimiento ? item.vencimiento + 'T00:00:00+01:00' : '';
-
-                xmlContent += '  <usM6LEC_Inventarios_Exportar>\n';
-                xmlContent += `    <Almacén>${almacen}</Almacén>\n`;
-                xmlContent += `    <Fecha>${fechaIso}</Fecha>\n`;
-                xmlContent += `    <Artículo>${item.articuloNum}</Artículo>\n`;
-                xmlContent += '    <CajasReales>0</CajasReales>\n';
-                xmlContent += `    <StockReal>${stockTot}</StockReal>\n`;
-                xmlContent += '    <PMPReal>0.000000</PMPReal>\n';
-                xmlContent += '    <UpCompra>0.000000</UpCompra>\n';
-                xmlContent += '    <UPCoste>0.000000</UPCoste>\n';
-                xmlContent += `    <Lote>${item.lote}</Lote>\n`;
-                xmlContent += `    <StockRealLote>${stockLote}</StockRealLote>\n`;
-                if (fechaCadIso) {
-                    xmlContent += `    <Caducidad>${fechaCadIso}</Caducidad>\n`;
-                }
-                xmlContent += '  </usM6LEC_Inventarios_Exportar>\n';
-            });
-
-            xmlContent += '</NewDataSet>';
-
-            const blob = new Blob([xmlContent], { type: 'application/xml;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `STOCK_ACTUAL_EXPORT_${almacen}_${fechaInv}.xml`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            alert('¡Archivo XML en formato Marino exportado con éxito!');
-        }
-
         function renderizarInventariosGuardados() {
             const cont = document.getElementById('listaInventariosGuardados');
             document.getElementById('contadorInventariosGuardados').textContent = `${inventariosGuardados.length} guardados`;
@@ -1049,10 +1026,13 @@
                             <span>👤 ${inv.responsable}</span>
                             <span class="bg-slate-200 px-2 py-0.5 rounded font-bold">${inv.items.length} ítems</span>
                         </div>
-                        <div class="flex gap-1">
-                            <button onclick="editarInventarioSesion(${inv.id})" class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded font-semibold">✏️ Editar</button>
-                            <button onclick="exportarExcelInventarioRapido(${inv.id})" class="bg-blue-600 text-white text-xs px-2 py-1 rounded font-semibold">📥 Excel</button>
-                            <button onclick="eliminarInventarioSesion(${inv.id})" class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded">🗑️</button>
+                        <div class="flex gap-1.5 flex-wrap">
+                            <button onclick="editarInventarioSesion(${inv.id})" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs px-2 py-1 rounded font-semibold transition">✏️ Editar</button>
+                            <button onclick="exportarExcelInventarioRapido(${inv.id})" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded font-semibold transition">📥 Excel</button>
+                            <button onclick="exportarXmlMarinoGuardado(${inv.id})" class="bg-purple-600 hover:bg-purple-700 text-white text-xs px-2 py-1 rounded font-semibold transition">📄 XML</button>
+                            <button onclick="exportarPdfInventarioRapido(${inv.id})" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-2 py-1 rounded font-semibold transition">📑 PDF</button>
+                            <button onclick="enviarInventarioAGoogleSheets(${inv.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 py-1 rounded font-semibold transition" title="Subir a la nube Google Sheets">☁️ Sheets</button>
+                            <button onclick="eliminarInventarioSesion(${inv.id})" class="bg-red-100 hover:bg-red-200 text-red-700 text-xs px-2 py-1 rounded transition">🗑️</button>
                         </div>
                     </div>
                 </div>
@@ -1088,7 +1068,7 @@
             renderizarTablaSesionInv();
         }
 
-        // MEJORA 2: Descarga en Excel recuperada tal como la teníamos
+        // 1. DESCARGA EXCEL DESDE HISTORIAL (Mantiene formato exacto)
         function exportarExcelInventarioRapido(id) {
             const inv = inventariosGuardados.find(i => i.id === id);
             if (!inv) return;
@@ -1102,6 +1082,149 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Sheet");
             XLSX.writeFile(wb, `InventarioRapido_${inv.almacenCodigo}_${inv.fechaInventario}.xlsx`);
+        }
+
+        // 2. DESCARGA XML MARINO DESDE HISTORIAL (Formato exacto exigido por Marino11)
+        function exportarXmlMarinoGuardado(id) {
+            const inv = inventariosGuardados.find(i => i.id === id);
+            if (!inv) return;
+
+            const almacen = inv.almacenCodigo || 'CE';
+            const fechaInv = inv.fechaInventario || new Date().toISOString().slice(0, 10);
+            const fechaIso = fechaInv + 'T00:00:00+01:00';
+
+            const stockTotalesArticulo = {};
+            inv.items.forEach(item => {
+                const art = item.articuloNum;
+                stockTotalesArticulo[art] = (stockTotalesArticulo[art] || 0) + parseFloat(item.stock || 0);
+            });
+
+            let xmlContent = '<?xml version="1.0" standalone="yes"?>\n<NewDataSet>\n';
+
+            xmlContent += '  <usM6LEC_Inventarios_Exportar>\n';
+            xmlContent += '    <Almacén>---</Almacén>\n';
+            xmlContent += '    <Artículo>-</Artículo>\n';
+            xmlContent += '    <CajasReales>0</CajasReales>\n';
+            xmlContent += '    <StockReal>0.000000</StockReal>\n';
+            xmlContent += '    <PMPReal>0.000000</PMPReal>\n';
+            xmlContent += '    <UpCompra>0.000000</UpCompra>\n';
+            xmlContent += '    <UPCoste>0.000000</UPCoste>\n';
+            xmlContent += '    <Lote>-</Lote>\n';
+            xmlContent += '    <StockRealLote>0.000000</StockRealLote>\n';
+            xmlContent += '  </usM6LEC_Inventarios_Exportar>\n';
+
+            inv.items.forEach(item => {
+                const stockTot = (stockTotalesArticulo[item.articuloNum] || 0).toFixed(6);
+                const stockLote = parseFloat(item.stock || 0).toFixed(6);
+                const fechaCadIso = item.vencimiento ? item.vencimiento + 'T00:00:00+01:00' : '';
+
+                xmlContent += '  <usM6LEC_Inventarios_Exportar>\n';
+                xmlContent += `    <Almacén>${almacen}</Almacén>\n`;
+                xmlContent += `    <Fecha>${fechaIso}</Fecha>\n`;
+                xmlContent += `    <Artículo>${item.articuloNum}</Artículo>\n`;
+                xmlContent += '    <CajasReales>0</CajasReales>\n';
+                xmlContent += `    <StockReal>${stockTot}</StockReal>\n`;
+                xmlContent += '    <PMPReal>0.000000</PMPReal>\n';
+                xmlContent += '    <UpCompra>0.000000</UpCompra>\n';
+                xmlContent += '    <UPCoste>0.000000</UPCoste>\n';
+                xmlContent += `    <Lote>${item.lote}</Lote>\n`;
+                xmlContent += `    <StockRealLote>${stockLote}</StockRealLote>\n`;
+                if (fechaCadIso) {
+                    xmlContent += `    <Caducidad>${fechaCadIso}</Caducidad>\n`;
+                }
+                xmlContent += '  </usM6LEC_Inventarios_Exportar>\n';
+            });
+
+            xmlContent += '</NewDataSet>';
+
+            const blob = new Blob([xmlContent], { type: 'application/xml;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `STOCK_MARINO_${almacen}_${fechaInv}.xml`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 3. DESCARGA PDF LIMPIO DESDE HISTORIAL (Tabla optimizada de lectura visual)
+        function exportarPdfInventarioRapido(id) {
+            const inv = inventariosGuardados.find(i => i.id === id);
+            if (!inv) return;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+
+            // Título y cabecera
+            doc.setFontSize(14);
+            doc.setTextColor(30, 58, 138);
+            doc.text('REPORTE DE INVENTARIO FÍSICO (CONTEO RÁPIDO)', 14, 18);
+
+            doc.setFontSize(9.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text(`Almacén: ${inv.almacenCodigo}   |   Fecha Inventario: ${inv.fechaInventario}`, 14, 26);
+            doc.text(`Responsable: ${inv.responsable}   |   Registro: ${inv.fechaRegistro}   |   Total Líneas: ${inv.items.length}`, 14, 32);
+
+            const tableColumn = ["Artículo", "Cód. Ant.", "Abreviación", "Lote/Serie", "Caducidad", "Stock"];
+            const tableRows = inv.items.map(it => [
+                it.articuloNum,
+                it.codAntiguo || '-',
+                it.abreviacion,
+                it.lote,
+                it.vencimiento,
+                String(it.stock)
+            ]);
+
+            doc.autoTable({
+                head: [tableColumn],
+                body: tableRows,
+                startY: 38,
+                theme: 'grid',
+                headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 8, textColor: 30 },
+                columnStyles: {
+                    0: { cellWidth: 22 },
+                    1: { cellWidth: 20 },
+                    2: { cellWidth: 'auto' },
+                    3: { cellWidth: 28 },
+                    4: { cellWidth: 24 },
+                    5: { cellWidth: 18, halign: 'right', fontStyle: 'bold' }
+                }
+            });
+
+            doc.save(`InventarioRapido_${inv.almacenCodigo}_${inv.fechaInventario}.pdf`);
+        }
+
+        // ENVÍO CLOUD PORTABLE A GOOGLE SHEETS
+        async function enviarInventarioAGoogleSheets(id) {
+            if (!googleSheetsWebhookUrl) {
+                alert('⚠️ Primero configura la URL de tu Web App de Google Sheets en el menú lateral (⚙️ -> 4. Conexión Google Sheets).');
+                toggleSidebar();
+                return;
+            }
+            const inv = inventariosGuardados.find(i => i.id === id);
+            if (!inv) return;
+
+            const payload = {
+                almacen: inv.almacenCodigo,
+                fechaInventario: inv.fechaInventario,
+                responsable: inv.responsable,
+                fechaRegistro: inv.fechaRegistro,
+                items: inv.items
+            };
+
+            try {
+                await fetch(googleSheetsWebhookUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                alert(`✅ ¡Inventario enviado a Google Sheets con éxito! (${inv.items.length} líneas sincronizadas).`);
+            } catch (error) {
+                alert('❌ Error de conexión al intentar enviar los datos a Google Sheets.');
+            }
         }
 
         function eliminarInventarioSesion(id) {
@@ -1356,7 +1479,7 @@
             if (query.length === 0) { cont.classList.add('hidden'); return; }
             const filtrados = Array.from(provSet).filter(p => p.toLowerCase().includes(query)).slice(0, 15);
             cont.innerHTML = filtrados.length === 0 ? '<div class="p-2 text-xs text-slate-400">Sin proveedores.</div>' : filtrados.map(p => `
-                <div onclick="seleccionarProveedor('${p.replace(/'/g, "\\'")}')" class="p-2 hover:bg-emerald-50 cursor-pointer border-b text-xs font-medium text-slate-700">${p}</div>
+                <div onclick="seleccionarProveedor('${p.replace(/'/g, "\'")}')" class="p-2 hover:bg-emerald-50 cursor-pointer border-b text-xs font-medium text-slate-700">${p}</div>
             `).join('');
             cont.classList.remove('hidden');
         }
