@@ -37,6 +37,7 @@
             <button onclick="cambiarModulo('inventario')" id="btnNavInv" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-semibold transition hidden">📦 Conteo Rápido</button>
             <button onclick="cambiarModulo('stock')" id="btnNavStock" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-semibold transition hidden">📊 Stock vs XML</button>
             <button onclick="cambiarModulo('pedidos')" id="btnNavPed" class="text-xs bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded font-semibold transition hidden">🛒 Pedidos</button>
+            <button onclick="cambiarModulo('consolidador')" id="btnNavConsolidador" class="text-xs bg-purple-700 hover:bg-purple-800 px-3 py-1.5 rounded font-semibold transition hidden">🧩 Consolidador XML Marino</button>
         </div>
     </header>
 
@@ -86,20 +87,19 @@
                     </div>
                 </div>
 
-                <!-- CONFIGURACIÓN CLOUD GOOGLE SHEETS PORTABLE -->
+                <!-- ESTADO CLOUD DESDE config.json (SIN CAMPO MANUAL) -->
                 <div class="border-t pt-3">
-                    <span class="block text-xs font-bold text-emerald-700 uppercase mb-1">4. Conexión Google Sheets (Cloud)</span>
-                    <p class="text-[10px] text-slate-500 mb-2 leading-tight">Pega aquí la URL del Web App (Apps Script). Cambia de cuenta de Gmail en segundos pegando una nueva URL.</p>
-                    <input type="url" id="txtGoogleSheetsUrl" placeholder="https://script.google.com/macros/s/..." class="w-full text-xs border border-slate-300 rounded p-2 mb-2 bg-slate-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                    <button onclick="guardarUrlGoogleSheets()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded font-bold transition shadow">
-                        ☁️ Guardar URL Cloud
-                    </button>
-                    <span id="statusCloudUrl" class="block text-[10px] text-slate-400 mt-1 text-center">Sin URL configurada</span>
+                    <span class="block text-xs font-bold text-slate-400 uppercase mb-2">4. Estado Google Sheets (config.json)</span>
+                    <div id="cloudStatusBanner" class="p-3 rounded-lg border text-xs font-bold flex items-center justify-between bg-rose-50 border-rose-200 text-rose-700">
+                        <span id="statusCloudText">🔴 Desconectado</span>
+                        <button onclick="cargarConfigCloud(false)" class="text-[10px] underline font-semibold">Reintentar</button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1.5 leading-tight">La URL se lee automáticamente desde <code>config.json</code> en GitHub Pages.</p>
                 </div>
             </div>
 
             <div class="mt-auto border-t pt-4 text-xs text-slate-400">
-                <p>💡 Sincronizado offline + Cloud portable.</p>
+                <p>💡 Sincronizado offline + Cloud centralizada.</p>
             </div>
         </aside>
 
@@ -115,14 +115,14 @@
                     <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-2">¿Qué deseas realizar hoy?</h2>
                     <p class="text-sm text-slate-500">Selecciona el módulo de trabajo correspondiente.</p>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-4xl px-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl px-4">
                     <div onclick="cambiarModulo('inventario')" class="bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-500 rounded-2xl p-6 shadow-sm transition cursor-pointer flex flex-col items-center text-center gap-4 group">
                         <div class="w-16 h-16 bg-blue-100 group-hover:bg-blue-600 text-blue-600 group-hover:text-white rounded-2xl flex items-center justify-center text-3xl transition">
                             📦
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-slate-800">Conteo Rápido</h3>
-                            <p class="text-xs text-slate-500 mt-1">Recuento libre, exportación Excel/XML/PDF desde historial y envío a Google Sheets.</p>
+                            <p class="text-xs text-slate-500 mt-1">Recuento libre, exportación Excel/XML/PDF y envío versionado a Sheets.</p>
                         </div>
                     </div>
 
@@ -143,6 +143,16 @@
                         <div>
                             <h3 class="text-lg font-bold text-slate-800">Módulo de Pedidos</h3>
                             <p class="text-xs text-slate-500 mt-1">Genera pedidos por proveedor agrupados por familias.</p>
+                        </div>
+                    </div>
+
+                    <div onclick="cambiarModulo('consolidador')" class="bg-white hover:bg-purple-50 border-2 border-slate-200 hover:border-purple-500 rounded-2xl p-6 shadow-sm transition cursor-pointer flex flex-col items-center text-center gap-4 group">
+                        <div class="w-16 h-16 bg-purple-100 group-hover:bg-purple-600 text-purple-600 group-hover:text-white rounded-2xl flex items-center justify-center text-3xl transition">
+                            🧩
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Consolidador XML Marino</h3>
+                            <p class="text-xs text-slate-500 mt-1">Agrupa registros de Google Sheets y genera el XML de Marino11.</p>
                         </div>
                     </div>
                 </div>
@@ -407,6 +417,75 @@
                 </div>
             </div>
 
+            <!-- PANTALLA 4: CONSOLIDADOR XML MARINO (DESDE GOOGLE SHEETS O HISTORIAL LOCAL) -->
+            <div id="viewConsolidador" class="hidden flex-col gap-6 flex-1">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
+                    <div class="flex flex-wrap justify-between items-center border-b pb-3 gap-2">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-800">🧩 Consolidador XML Marino (Almacén + Artículo + Lote)</h2>
+                            <p class="text-xs text-slate-500">Carga registros desde Google Sheets o desde tu historial local, agrupa cantidades iguales y exporta el XML de Marino11.</p>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <button onclick="cargarDatosDesdeSheetsConsolidador()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded shadow transition">
+                                ☁️ Cargar desde Google Sheets
+                            </button>
+                            <button onclick="cargarDatosDesdeHistorialLocalConsolidador()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded shadow transition">
+                                📂 Cargar Historial Local
+                            </button>
+                            <button onclick="exportarXmlConsolidadoMarino()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded shadow transition">
+                                📥 Descargar XML Consolidado
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Filtrar Almacén</label>
+                            <select id="selConsAlmacen" onchange="renderizarTablaConsolidada()" class="w-full text-sm border border-slate-300 rounded p-2 bg-slate-50">
+                                <option value="">Todos los almacenes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Filtrar Fecha Inventario</label>
+                            <input type="date" id="txtConsFecha" onchange="renderizarTablaConsolidada()" class="w-full text-sm border border-slate-300 rounded p-2 bg-slate-50">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Filtrar Responsable</label>
+                            <input type="text" id="txtConsResponsable" placeholder="Ej. Carlos, Laura..." oninput="renderizarTablaConsolidada()" class="w-full text-sm border border-slate-300 rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Corte XML</label>
+                            <input type="date" id="txtConsFechaXml" class="w-full text-sm border border-slate-300 rounded p-2 bg-slate-50">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col flex-1">
+                    <div class="flex justify-between items-center border-b pb-3 mb-4">
+                        <h3 class="text-sm font-bold text-slate-700">📊 Vista Previa Consolidada (Agrupada por Almacén + Artículo + Lote)</h3>
+                        <span id="contadorConsolidadoFilas" class="bg-purple-100 text-purple-800 text-xs font-bold px-2.5 py-1 rounded-full">0 líneas consolidadas</span>
+                    </div>
+                    <div class="flex-1 overflow-x-auto max-h-96">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-600 uppercase font-bold sticky top-0">
+                                    <th class="p-2">Almacén</th>
+                                    <th class="p-2">Artículo</th>
+                                    <th class="p-2">Abreviación</th>
+                                    <th class="p-2">Lote/Serie</th>
+                                    <th class="p-2">Caducidad</th>
+                                    <th class="p-2 text-right">Stock Real Lote</th>
+                                    <th class="p-2 text-right">Stock Real Artículo (Alm.)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaConsolidadoBody" class="divide-y divide-slate-200">
+                                <tr><td colspan="7" class="text-center text-slate-400 py-6">Pulsa "Cargar desde Google Sheets" o "Cargar Historial Local" para comenzar.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
 
     </div>
@@ -454,8 +533,13 @@
         let inventariosStockGuardados = JSON.parse(localStorage.getItem('inventarios_stock_guardados')) || [];
         let pedidosGuardados = JSON.parse(localStorage.getItem('pedidos_guardados')) || [];
 
-        // URL Portable de Google Apps Script (Cloud Google Sheets)
-        let googleSheetsWebhookUrl = localStorage.getItem('google_sheets_webhook_url') || '';
+        // URL leída desde config.json
+        let googleSheetsWebhookUrl = '';
+        let cloudConectado = false;
+
+        // Consolidador
+        let registrosFuenteConsolidador = [];
+        let lineasConsolidadasActuales = [];
 
         // Módulo Conteo Rápido
         let sesionStockRapido = JSON.parse(localStorage.getItem('sesion_stock_rapido')) || [];
@@ -477,6 +561,7 @@
         let editPedidoId = null;
 
         document.getElementById('txtFechaInv').valueAsDate = new Date();
+        document.getElementById('txtConsFechaXml').valueAsDate = new Date();
 
         window.addEventListener('beforeunload', (e) => {
             const hayDatosInv = document.getElementById('txtResponsableInv').value.trim() !== '' || sesionStockRapido.length > 0;
@@ -488,38 +573,46 @@
             }
         });
 
-        function inicializarConfigCloud() {
-            const inputUrl = document.getElementById('txtGoogleSheetsUrl');
-            const statusLbl = document.getElementById('statusCloudUrl');
-            if (googleSheetsWebhookUrl) {
-                inputUrl.value = googleSheetsWebhookUrl;
-                statusLbl.textContent = '✅ Conectado a Google Sheets';
-                statusLbl.className = 'block text-[10px] text-emerald-600 font-bold mt-1 text-center';
+        function actualizarIndicadorCloudUI(conectado, mensajeExtra = '') {
+            const banner = document.getElementById('cloudStatusBanner');
+            const texto = document.getElementById('statusCloudText');
+            if (conectado && googleSheetsWebhookUrl) {
+                banner.className = 'p-3 rounded-lg border text-xs font-bold flex items-center justify-between bg-emerald-50 border-emerald-300 text-emerald-800';
+                texto.textContent = mensajeExtra || '🟢 Conectado';
+            } else {
+                banner.className = 'p-3 rounded-lg border text-xs font-bold flex items-center justify-between bg-rose-50 border-rose-300 text-rose-800';
+                texto.textContent = mensajeExtra || '🔴 Desconectado';
             }
         }
 
-        function guardarUrlGoogleSheets() {
-            const url = document.getElementById('txtGoogleSheetsUrl').value.trim();
-            if (!url) {
-                localStorage.removeItem('google_sheets_webhook_url');
+        async function cargarConfigCloud(silencioso = true) {
+            try {
+                const res = await fetch('config.json?t=' + new Date().getTime());
+                if (res.ok) {
+                    const cfg = await res.json();
+                    const url = String((cfg && cfg.sheetsUrl) || '').trim();
+                    if (url && url.startsWith('https://script.google.com/')) {
+                        googleSheetsWebhookUrl = url;
+                        cloudConectado = true;
+                        actualizarIndicadorCloudUI(true, '🟢 Conectado');
+                        if (!silencioso) alert('¡Conectado a Google Sheets desde config.json!');
+                        return;
+                    }
+                }
                 googleSheetsWebhookUrl = '';
-                document.getElementById('statusCloudUrl').textContent = 'Sin URL configurada';
-                document.getElementById('statusCloudUrl').className = 'block text-[10px] text-slate-400 mt-1 text-center';
-                alert('URL de Google Sheets eliminada.');
-                return;
+                cloudConectado = false;
+                actualizarIndicadorCloudUI(false, '🔴 Desconectado');
+                if (!silencioso) alert('No hay una URL válida configurada en config.json.');
+            } catch (e) {
+                googleSheetsWebhookUrl = '';
+                cloudConectado = false;
+                actualizarIndicadorCloudUI(false, '🔴 Desconectado');
+                if (!silencioso) alert('No se pudo leer config.json.');
             }
-            if (!url.startsWith('https://script.google.com/')) {
-                alert('Por favor introduce una URL válida de Google Apps Script (debe empezar por https://script.google.com/...).');
-                return;
-            }
-            googleSheetsWebhookUrl = url;
-            localStorage.setItem('google_sheets_webhook_url', url);
-            inicializarConfigCloud();
-            alert('¡URL de Google Sheets guardada con éxito! Ahora puedes enviar cualquier inventario guardado directamente a tu hoja en la nube.');
         }
 
         async function cargarMaestrosAutomaticos() {
-            inicializarConfigCloud();
+            await cargarConfigCloud(true);
             try {
                 await forzarRecargaTodosRemoto(true);
             } catch (e) {
@@ -534,6 +627,7 @@
         }
 
         async function forzarRecargaTodosRemoto(silencioso = false) {
+            await cargarConfigCloud(true);
             const ts = new Date().getTime();
             try {
                 const resArt = await fetch('MASTER_ARTICULOS.xlsx?t=' + ts);
@@ -558,7 +652,10 @@
                 inicializarSelects();
                 actualizarContadoresUI();
                 if (!silencioso) {
-                    alert(`¡Sincronización Total Completada!\n- Artículos: ${masterArticulos.length}\n- Almacenes: ${masterAlmacenes.length}\n- Lotes XML activos: ${stockXmlData.length}`);
+                    alert(`¡Sincronización Total Completada!
+- Artículos: ${masterArticulos.length}
+- Almacenes: ${masterAlmacenes.length}
+- Lotes XML activos: ${stockXmlData.length}`);
                 }
             } catch (e) {
                 if (!silencioso) alert('Error al intentar recargar archivos desde GitHub.');
@@ -581,6 +678,13 @@
             }
         }
 
+        function mostrarBotonesNav() {
+            document.getElementById('btnNavInv').classList.remove('hidden');
+            document.getElementById('btnNavStock').classList.remove('hidden');
+            document.getElementById('btnNavPed').classList.remove('hidden');
+            document.getElementById('btnNavConsolidador').classList.remove('hidden');
+        }
+
         function mostrarPantallaInicio() {
             document.getElementById('viewInicio').classList.remove('hidden');
             document.getElementById('viewInicio').classList.add('flex');
@@ -590,18 +694,16 @@
             document.getElementById('viewStock').classList.remove('flex');
             document.getElementById('viewPedidos').classList.add('hidden');
             document.getElementById('viewPedidos').classList.remove('flex');
+            document.getElementById('viewConsolidador').classList.add('hidden');
+            document.getElementById('viewConsolidador').classList.remove('flex');
             document.getElementById('lblModuloActivo').textContent = 'Menú Principal';
-            document.getElementById('btnNavInv').classList.remove('hidden');
-            document.getElementById('btnNavStock').classList.remove('hidden');
-            document.getElementById('btnNavPed').classList.remove('hidden');
+            mostrarBotonesNav();
         }
 
         function cambiarModulo(mod) {
             document.getElementById('viewInicio').classList.add('hidden');
             document.getElementById('viewInicio').classList.remove('flex');
-            document.getElementById('btnNavInv').classList.remove('hidden');
-            document.getElementById('btnNavStock').classList.remove('hidden');
-            document.getElementById('btnNavPed').classList.remove('hidden');
+            mostrarBotonesNav();
 
             document.getElementById('viewInventario').classList.add('hidden');
             document.getElementById('viewInventario').classList.remove('grid');
@@ -609,6 +711,8 @@
             document.getElementById('viewStock').classList.remove('flex');
             document.getElementById('viewPedidos').classList.add('hidden');
             document.getElementById('viewPedidos').classList.remove('flex');
+            document.getElementById('viewConsolidador').classList.add('hidden');
+            document.getElementById('viewConsolidador').classList.remove('flex');
 
             if (mod === 'inventario') {
                 document.getElementById('viewInventario').classList.remove('hidden');
@@ -623,6 +727,11 @@
                 document.getElementById('viewPedidos').classList.add('flex');
                 document.getElementById('lblModuloActivo').textContent = 'Módulo: Pedidos';
                 renderizarPedidosGuardados();
+            } else if (mod === 'consolidador') {
+                document.getElementById('viewConsolidador').classList.remove('hidden');
+                document.getElementById('viewConsolidador').classList.add('flex');
+                document.getElementById('lblModuloActivo').textContent = 'Módulo: Consolidador XML Marino';
+                poblarFiltroAlmacenesConsolidador();
             }
         }
 
@@ -904,7 +1013,9 @@
                 if (existingIdx !== -1) {
                     const cadExistente = sesionStockRapido[existingIdx].vencimiento || '';
                     if (cadExistente && vencimiento && cadExistente !== vencimiento) {
-                        const continuar = confirm(`⚠️ ADVERTENCIA: El artículo y lote "${lote}" ya existen en la lista pero con una fecha de caducidad distinta (${cadExistente} vs ${vencimiento}).\n\n¿Deseas continuar y sumar las cantidades en esta misma línea (Aceptar) o cancelar la operación (Cancelar)?`);
+                        const continuar = confirm(`⚠️ ADVERTENCIA: El artículo y lote "${lote}" ya existen en la lista pero con una fecha de caducidad distinta (${cadExistente} vs ${vencimiento}).
+
+¿Deseas continuar y sumar las cantidades en esta misma línea (Aceptar) o cancelar la operación (Cancelar)?`);
                         if (!continuar) return;
                     }
 
@@ -992,13 +1103,30 @@
             if (editInventarioInvId) {
                 const i = inventariosGuardados.findIndex(inv => inv.id === editInventarioInvId);
                 if (i !== -1) {
-                    inventariosGuardados[i] = { ...inventariosGuardados[i], almacenCodigo: almacen, fechaInventario: fechaInv, responsable, items: [...sesionStockRapido] };
+                    const prevVersion = Number(inventariosGuardados[i].version) || 1;
+                    inventariosGuardados[i] = {
+                        ...inventariosGuardados[i],
+                        almacenCodigo: almacen,
+                        fechaInventario: fechaInv,
+                        fechaRegistro: fechaReg,
+                        responsable,
+                        version: prevVersion + 1,
+                        items: [...sesionStockRapido]
+                    };
                 }
                 editInventarioInvId = null;
                 document.getElementById('badgeEditandoInv').classList.add('hidden');
                 document.getElementById('btnCancelarInv').classList.add('hidden');
             } else {
-                inventariosGuardados.unshift({ id: Date.now(), fechaRegistro: fechaReg, fechaInventario: fechaInv, almacenCodigo: almacen, responsable, items: [...sesionStockRapido] });
+                inventariosGuardados.unshift({
+                    id: Date.now(),
+                    fechaRegistro: fechaReg,
+                    fechaInventario: fechaInv,
+                    almacenCodigo: almacen,
+                    responsable,
+                    version: 1,
+                    items: [...sesionStockRapido]
+                });
                 sesionStockRapido = [];
                 localStorage.removeItem('sesion_stock_rapido');
             }
@@ -1017,13 +1145,16 @@
                 cont.innerHTML = `<p class="text-center text-slate-400 py-4 text-xs">No hay inventarios guardados todavía.</p>`;
                 return;
             }
-            cont.innerHTML = inventariosGuardados.map(inv => `
+            cont.innerHTML = inventariosGuardados.map(inv => {
+                const ver = Number(inv.version) || 1;
+                return `
                 <div class="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2">
                     <div class="flex flex-wrap justify-between items-center gap-2">
-                        <div class="flex items-center gap-3 text-xs">
+                        <div class="flex items-center gap-2.5 text-xs flex-wrap">
                             <span class="font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Alm: ${inv.almacenCodigo}</span>
                             <span>📅 ${inv.fechaInventario}</span>
                             <span>👤 ${inv.responsable}</span>
+                            <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">v${ver}</span>
                             <span class="bg-slate-200 px-2 py-0.5 rounded font-bold">${inv.items.length} ítems</span>
                         </div>
                         <div class="flex gap-1.5 flex-wrap">
@@ -1036,7 +1167,7 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function editarInventarioSesion(id) {
@@ -1068,7 +1199,6 @@
             renderizarTablaSesionInv();
         }
 
-        // 1. DESCARGA EXCEL DESDE HISTORIAL (Mantiene formato exacto)
         function exportarExcelInventarioRapido(id) {
             const inv = inventariosGuardados.find(i => i.id === id);
             if (!inv) return;
@@ -1076,7 +1206,8 @@
                 "Almacén": inv.almacenCodigo, "Fecha": inv.fechaInventario, "Artículo": it.articuloNum,
                 "Abreviación": it.abreviacion, "Lote/Serie": it.lote, "Cajas": 0, "Stock": it.stock, "PMP": 0,
                 "U.P. Compra": "", "U.P.Coste": 0, "Stock Lote": it.stock, "Caducidad": it.vencimiento,
-                "Responsable": inv.responsable, "Fecha/Hora Inventario": inv.fechaRegistro
+                "Responsable": inv.responsable, "Fecha/Hora Inventario": inv.fechaRegistro,
+                "ID_Inventario": inv.id, "Versión": "v" + (inv.version || 1)
             }));
             const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();
@@ -1084,7 +1215,105 @@
             XLSX.writeFile(wb, `InventarioRapido_${inv.almacenCodigo}_${inv.fechaInventario}.xlsx`);
         }
 
-        // 2. DESCARGA XML MARINO DESDE HISTORIAL (Formato exacto exigido por Marino11)
+        function construirXmlMarinoDesdeLineas(lineas, almacenFallback, fechaIso) {
+            // Agrupa por almacén + artículo + lote y suma cantidades
+            const mapaLote = {};
+            const mapaArticuloAlmacen = {};
+
+            lineas.forEach(item => {
+                const alm = String(item.almacen || almacenFallback || 'CE').trim();
+                const art = String(item.articuloNum || '').trim();
+                const lote = String(item.lote || '').trim();
+                const qty = parseFloat(item.stock) || 0;
+                if (!art) return;
+
+                const claveArtAlm = `${alm}__${art}`;
+                mapaArticuloAlmacen[claveArtAlm] = (mapaArticuloAlmacen[claveArtAlm] || 0) + qty;
+
+                const claveLote = `${alm}__${art}__${lote}`;
+                if (!mapaLote[claveLote]) {
+                    mapaLote[claveLote] = {
+                        almacen: alm,
+                        articuloNum: art,
+                        lote: lote,
+                        vencimiento: item.vencimiento || '',
+                        stockLote: 0
+                    };
+                }
+                mapaLote[claveLote].stockLote += qty;
+                if (item.vencimiento && !mapaLote[claveLote].vencimiento) {
+                    mapaLote[claveLote].vencimiento = item.vencimiento;
+                }
+            });
+
+            let xmlContent = '<?xml version="1.0" standalone="yes"?>
+<NewDataSet>
+';
+
+            xmlContent += '  <usM6LEC_Inventarios_Exportar>
+';
+            xmlContent += '    <Almacén>---</Almacén>
+';
+            xmlContent += '    <Artículo>-</Artículo>
+';
+            xmlContent += '    <CajasReales>0</CajasReales>
+';
+            xmlContent += '    <StockReal>0.000000</StockReal>
+';
+            xmlContent += '    <PMPReal>0.000000</PMPReal>
+';
+            xmlContent += '    <UpCompra>0.000000</UpCompra>
+';
+            xmlContent += '    <UPCoste>0.000000</UPCoste>
+';
+            xmlContent += '    <Lote>-</Lote>
+';
+            xmlContent += '    <StockRealLote>0.000000</StockRealLote>
+';
+            xmlContent += '  </usM6LEC_Inventarios_Exportar>
+';
+
+            Object.values(mapaLote).forEach(entry => {
+                const stockTotArt = (mapaArticuloAlmacen[`${entry.almacen}__${entry.articuloNum}`] || 0).toFixed(6);
+                const stockLoteFmt = (entry.stockLote || 0).toFixed(6);
+                const fechaCadIso = (entry.vencimiento && String(entry.vencimiento).length >= 10)
+                    ? String(entry.vencimiento).slice(0, 10) + 'T00:00:00+01:00'
+                    : '';
+
+                xmlContent += '  <usM6LEC_Inventarios_Exportar>
+';
+                xmlContent += `    <Almacén>${entry.almacen}</Almacén>
+`;
+                xmlContent += `    <Fecha>${fechaIso}</Fecha>
+`;
+                xmlContent += `    <Artículo>${entry.articuloNum}</Artículo>
+`;
+                xmlContent += '    <CajasReales>0</CajasReales>
+';
+                xmlContent += `    <StockReal>${stockTotArt}</StockReal>
+`;
+                xmlContent += '    <PMPReal>0.000000</PMPReal>
+';
+                xmlContent += '    <UpCompra>0.000000</UpCompra>
+';
+                xmlContent += '    <UPCoste>0.000000</UPCoste>
+';
+                xmlContent += `    <Lote>${entry.lote}</Lote>
+`;
+                xmlContent += `    <StockRealLote>${stockLoteFmt}</StockRealLote>
+`;
+                if (fechaCadIso) {
+                    xmlContent += `    <Caducidad>${fechaCadIso}</Caducidad>
+`;
+                }
+                xmlContent += '  </usM6LEC_Inventarios_Exportar>
+';
+            });
+
+            xmlContent += '</NewDataSet>';
+            return xmlContent;
+        }
+
         function exportarXmlMarinoGuardado(id) {
             const inv = inventariosGuardados.find(i => i.id === id);
             if (!inv) return;
@@ -1093,49 +1322,8 @@
             const fechaInv = inv.fechaInventario || new Date().toISOString().slice(0, 10);
             const fechaIso = fechaInv + 'T00:00:00+01:00';
 
-            const stockTotalesArticulo = {};
-            inv.items.forEach(item => {
-                const art = item.articuloNum;
-                stockTotalesArticulo[art] = (stockTotalesArticulo[art] || 0) + parseFloat(item.stock || 0);
-            });
-
-            let xmlContent = '<?xml version="1.0" standalone="yes"?>\n<NewDataSet>\n';
-
-            xmlContent += '  <usM6LEC_Inventarios_Exportar>\n';
-            xmlContent += '    <Almacén>---</Almacén>\n';
-            xmlContent += '    <Artículo>-</Artículo>\n';
-            xmlContent += '    <CajasReales>0</CajasReales>\n';
-            xmlContent += '    <StockReal>0.000000</StockReal>\n';
-            xmlContent += '    <PMPReal>0.000000</PMPReal>\n';
-            xmlContent += '    <UpCompra>0.000000</UpCompra>\n';
-            xmlContent += '    <UPCoste>0.000000</UPCoste>\n';
-            xmlContent += '    <Lote>-</Lote>\n';
-            xmlContent += '    <StockRealLote>0.000000</StockRealLote>\n';
-            xmlContent += '  </usM6LEC_Inventarios_Exportar>\n';
-
-            inv.items.forEach(item => {
-                const stockTot = (stockTotalesArticulo[item.articuloNum] || 0).toFixed(6);
-                const stockLote = parseFloat(item.stock || 0).toFixed(6);
-                const fechaCadIso = item.vencimiento ? item.vencimiento + 'T00:00:00+01:00' : '';
-
-                xmlContent += '  <usM6LEC_Inventarios_Exportar>\n';
-                xmlContent += `    <Almacén>${almacen}</Almacén>\n`;
-                xmlContent += `    <Fecha>${fechaIso}</Fecha>\n`;
-                xmlContent += `    <Artículo>${item.articuloNum}</Artículo>\n`;
-                xmlContent += '    <CajasReales>0</CajasReales>\n';
-                xmlContent += `    <StockReal>${stockTot}</StockReal>\n`;
-                xmlContent += '    <PMPReal>0.000000</PMPReal>\n';
-                xmlContent += '    <UpCompra>0.000000</UpCompra>\n';
-                xmlContent += '    <UPCoste>0.000000</UPCoste>\n';
-                xmlContent += `    <Lote>${item.lote}</Lote>\n`;
-                xmlContent += `    <StockRealLote>${stockLote}</StockRealLote>\n`;
-                if (fechaCadIso) {
-                    xmlContent += `    <Caducidad>${fechaCadIso}</Caducidad>\n`;
-                }
-                xmlContent += '  </usM6LEC_Inventarios_Exportar>\n';
-            });
-
-            xmlContent += '</NewDataSet>';
+            const lineasConAlm = inv.items.map(it => ({ ...it, almacen }));
+            const xmlContent = construirXmlMarinoDesdeLineas(lineasConAlm, almacen, fechaIso);
 
             const blob = new Blob([xmlContent], { type: 'application/xml;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -1148,7 +1336,6 @@
             URL.revokeObjectURL(url);
         }
 
-        // 3. DESCARGA PDF LIMPIO DESDE HISTORIAL (Tabla optimizada de lectura visual)
         function exportarPdfInventarioRapido(id) {
             const inv = inventariosGuardados.find(i => i.id === id);
             if (!inv) return;
@@ -1156,14 +1343,13 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
 
-            // Título y cabecera
             doc.setFontSize(14);
             doc.setTextColor(30, 58, 138);
             doc.text('REPORTE DE INVENTARIO FÍSICO (CONTEO RÁPIDO)', 14, 18);
 
             doc.setFontSize(9.5);
             doc.setTextColor(71, 85, 105);
-            doc.text(`Almacén: ${inv.almacenCodigo}   |   Fecha Inventario: ${inv.fechaInventario}`, 14, 26);
+            doc.text(`Almacén: ${inv.almacenCodigo}   |   Fecha Inventario: ${inv.fechaInventario}   |   Versión: v${inv.version || 1}`, 14, 26);
             doc.text(`Responsable: ${inv.responsable}   |   Registro: ${inv.fechaRegistro}   |   Total Líneas: ${inv.items.length}`, 14, 32);
 
             const tableColumn = ["Artículo", "Cód. Ant.", "Abreviación", "Lote/Serie", "Caducidad", "Stock"];
@@ -1196,17 +1382,19 @@
             doc.save(`InventarioRapido_${inv.almacenCodigo}_${inv.fechaInventario}.pdf`);
         }
 
-        // ENVÍO CLOUD PORTABLE A GOOGLE SHEETS
         async function enviarInventarioAGoogleSheets(id) {
             if (!googleSheetsWebhookUrl) {
-                alert('⚠️ Primero configura la URL de tu Web App de Google Sheets en el menú lateral (⚙️ -> 4. Conexión Google Sheets).');
+                alert('⚠️ No hay URL configurada en config.json (Estado: Desconectado).');
                 toggleSidebar();
                 return;
             }
             const inv = inventariosGuardados.find(i => i.id === id);
             if (!inv) return;
 
+            const ver = Number(inv.version) || 1;
             const payload = {
+                inventarioId: String(inv.id),
+                version: ver,
                 almacen: inv.almacenCodigo,
                 fechaInventario: inv.fechaInventario,
                 responsable: inv.responsable,
@@ -1221,7 +1409,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                alert(`✅ ¡Inventario enviado a Google Sheets con éxito! (${inv.items.length} líneas sincronizadas).`);
+                alert(`✅ ¡Inventario enviado a Google Sheets (Versión v${ver})! Si existía una versión anterior de este ID, se ha reemplazado.`);
             } catch (error) {
                 alert('❌ Error de conexión al intentar enviar los datos a Google Sheets.');
             }
@@ -1233,6 +1421,166 @@
                 localStorage.setItem('inventarios_guardados', JSON.stringify(inventariosGuardados));
                 renderizarInventariosGuardados();
             }
+        }
+
+        // --- CONSOLIDADOR XML MARINO ---
+        function poblarFiltroAlmacenesConsolidador() {
+            const sel = document.getElementById('selConsAlmacen');
+            const actual = sel.value;
+            const setAlm = new Set();
+            masterAlmacenes.forEach(a => {
+                const c = a['Almacén #'] || a['Almacen #'];
+                if (c) setAlm.add(String(c).trim());
+            });
+            registrosFuenteConsolidador.forEach(r => {
+                if (r.almacen) setAlm.add(String(r.almacen).trim());
+            });
+            sel.innerHTML = '<option value="">Todos los almacenes</option>';
+            Array.from(setAlm).sort().forEach(c => sel.appendChild(new Option(c, c)));
+            if (actual) sel.value = actual;
+        }
+
+        function cargarDatosDesdeHistorialLocalConsolidador() {
+            const rows = [];
+            inventariosGuardados.forEach(inv => {
+                (inv.items || []).forEach(it => {
+                    rows.push({
+                        almacen: inv.almacenCodigo,
+                        fechaInventario: inv.fechaInventario,
+                        articuloNum: it.articuloNum,
+                        codAntiguo: it.codAntiguo || '',
+                        abreviacion: it.abreviacion,
+                        familia: it.familia || '',
+                        lote: it.lote,
+                        vencimiento: it.vencimiento || '',
+                        stock: Number(it.stock) || 0,
+                        responsable: inv.responsable,
+                        fechaRegistro: inv.fechaRegistro
+                    });
+                });
+            });
+            registrosFuenteConsolidador = rows;
+            poblarFiltroAlmacenesConsolidador();
+            renderizarTablaConsolidada();
+            alert(`Cargadas ${rows.length} líneas desde el historial local.`);
+        }
+
+        async function cargarDatosDesdeSheetsConsolidador() {
+            if (!googleSheetsWebhookUrl) {
+                alert('⚠️ No hay URL de Google Sheets configurada en config.json.');
+                return;
+            }
+            try {
+                const res = await fetch(googleSheetsWebhookUrl + '?action=getInventarios&t=' + new Date().getTime());
+                const json = await res.json();
+                if (json && json.status === 'ok') {
+                    registrosFuenteConsolidador = json.rows || [];
+                    poblarFiltroAlmacenesConsolidador();
+                    renderizarTablaConsolidada();
+                    alert(`☁️ Cargadas ${registrosFuenteConsolidador.length} líneas desde Google Sheets.`);
+                } else {
+                    alert('No se pudieron leer los datos de Google Sheets.');
+                }
+            } catch (e) {
+                alert('❌ Error al consultar Google Sheets. Revisa que el script tenga doGet desplegado.');
+            }
+        }
+
+        function renderizarTablaConsolidada() {
+            const almFilter = document.getElementById('selConsAlmacen').value.trim();
+            const fechaFilter = document.getElementById('txtConsFecha').value.trim();
+            const respFilter = document.getElementById('txtConsResponsable').value.trim().toLowerCase();
+
+            const filtradas = registrosFuenteConsolidador.filter(r => {
+                if (almFilter && String(r.almacen || '').trim() !== almFilter) return false;
+                if (fechaFilter && !String(r.fechaInventario || '').startsWith(fechaFilter)) return false;
+                if (respFilter && !String(r.responsable || '').toLowerCase().includes(respFilter)) return false;
+                return true;
+            });
+
+            // Agrupar por Almacén + Artículo + Lote
+            const grupoLote = {};
+            const totalArtAlm = {};
+
+            filtradas.forEach(r => {
+                const alm = String(r.almacen || '').trim();
+                const art = String(r.articuloNum || '').trim();
+                const lote = String(r.lote || '').trim();
+                const qty = parseFloat(r.stock) || 0;
+                if (!art) return;
+
+                const kArtAlm = `${alm}__${art}`;
+                totalArtAlm[kArtAlm] = (totalArtAlm[kArtAlm] || 0) + qty;
+
+                const kLote = `${alm}__${art}__${lote}`;
+                if (!grupoLote[kLote]) {
+                    grupoLote[kLote] = {
+                        almacen: alm,
+                        articuloNum: art,
+                        abreviacion: r.abreviacion || '',
+                        lote: lote,
+                        vencimiento: r.vencimiento || '',
+                        stockLote: 0
+                    };
+                }
+                grupoLote[kLote].stockLote += qty;
+                if (r.vencimiento && !grupoLote[kLote].vencimiento) {
+                    grupoLote[kLote].vencimiento = r.vencimiento;
+                }
+            });
+
+            lineasConsolidadasActuales = Object.values(grupoLote).map(item => ({
+                ...item,
+                stockArticuloAlmacen: totalArtAlm[`${item.almacen}__${item.articuloNum}`] || 0
+            }));
+
+            document.getElementById('contadorConsolidadoFilas').textContent = `${lineasConsolidadasActuales.length} líneas consolidadas`;
+            const tbody = document.getElementById('tablaConsolidadoBody');
+
+            if (lineasConsolidadasActuales.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-400 py-6">No hay líneas que coincidan con el filtro.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = lineasConsolidadasActuales.map(it => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-2 font-bold text-blue-700">${it.almacen}</td>
+                    <td class="p-2 font-medium">${it.articuloNum}</td>
+                    <td class="p-2">${it.abreviacion}</td>
+                    <td class="p-2 font-semibold">${it.lote}</td>
+                    <td class="p-2">${it.vencimiento ? String(it.vencimiento).slice(0, 10) : '-'}</td>
+                    <td class="p-2 text-right font-bold text-emerald-700">${it.stockLote.toFixed(6)}</td>
+                    <td class="p-2 text-right font-bold text-slate-700">${it.stockArticuloAlmacen.toFixed(6)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function exportarXmlConsolidadoMarino() {
+            if (lineasConsolidadasActuales.length === 0) {
+                alert('No hay líneas consolidadas para exportar.');
+                return;
+            }
+            const fechaCorte = document.getElementById('txtConsFechaXml').value || new Date().toISOString().slice(0, 10);
+            const fechaIso = fechaCorte + 'T00:00:00+01:00';
+            const lineasParaXml = lineasConsolidadasActuales.map(it => ({
+                almacen: it.almacen,
+                articuloNum: it.articuloNum,
+                lote: it.lote,
+                vencimiento: it.vencimiento,
+                stock: it.stockLote
+            }));
+
+            const xmlContent = construirXmlMarinoDesdeLineas(lineasParaXml, 'CE', fechaIso);
+            const blob = new Blob([xmlContent], { type: 'application/xml;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `MARINO_CONSOLIDADO_${fechaCorte}.xml`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('¡XML consolidado de Marino11 descargado!');
         }
 
         // --- MÓDULO 2: INVENTARIO Y STOCK (XML) ---
