@@ -865,13 +865,14 @@
             if (filtrados.length === 0) {
                 cont.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin resultados.</div>';
             } else {
-                cont.innerHTML = filtrados.map(art => {
-                    const safeJson = JSON.stringify(art).replace(/"/g, '\"');
-                    return '<div onclick="seleccionarArticuloInv(' + safeJson + ')" class="p-2 hover:bg-blue-50 cursor-pointer border-b text-xs flex justify-between">' +
+                cont.innerHTML = filtrados.map((art, idx) => {
+                    const codVal = String(art['Artículo #'] || '');
+                    return '<div data-inv-idx="' + idx + '" data-art-cod="' + codVal.replace(/"/g, '&quot;') + '" class="sug-inv-item p-2 hover:bg-blue-50 cursor-pointer border-b text-xs flex justify-between">' +
                         '<div><span class="font-semibold text-slate-800">' + (art['Abreviación *'] || '') + '</span>' +
                         '<span class="text-blue-600 font-medium ml-1">[Antiguo: ' + (art['Código Antiguo'] || 'N/A') + ']</span></div>' +
-                        '<span class="text-slate-500">[Cód: ' + (art['Artículo #'] || '') + ']</span></div>';
+                        '<span class="text-slate-500">[Cód: ' + codVal + ']</span></div>';
                 }).join('');
+                cont._sugerenciasData = filtrados;
             }
             cont.classList.remove('hidden');
         }
@@ -1519,13 +1520,14 @@
             if (filtrados.length === 0) {
                 cont.innerHTML = '<div class="p-2 text-xs text-slate-400">Sin resultados.</div>';
             } else {
-                cont.innerHTML = filtrados.map(art => {
-                    const safeJson = JSON.stringify(art).replace(/"/g, '\"');
-                    return '<div onclick="seleccionarArticuloStock(' + safeJson + ')" class="p-2 hover:bg-blue-50 cursor-pointer border-b text-xs flex justify-between">' +
+                cont.innerHTML = filtrados.map((art, idx) => {
+                    const codVal = String(art['Artículo #'] || '');
+                    return '<div data-stock-idx="' + idx + '" data-art-cod="' + codVal.replace(/"/g, '&quot;') + '" class="sug-stock-item p-2 hover:bg-blue-50 cursor-pointer border-b text-xs flex justify-between">' +
                         '<div><span class="font-semibold text-slate-800">' + (art['Abreviación *'] || '') + '</span>' +
                         '<span class="text-blue-600 font-medium ml-1">[Antiguo: ' + (art['Código Antiguo'] || 'N/A') + ']</span></div>' +
-                        '<span class="text-slate-500">[Cód: ' + (art['Artículo #'] || '') + ']</span></div>';
+                        '<span class="text-slate-500">[Cód: ' + codVal + ']</span></div>';
                 }).join('');
+                cont._sugerenciasData = filtrados;
             }
             cont.classList.remove('hidden');
         }
@@ -1536,6 +1538,44 @@
             document.getElementById('sugerenciasStockArt').classList.add('hidden');
             renderizarLotesArticulo(art);
         }
+
+        document.addEventListener('click', function(e) {
+            const invItem = e.target.closest('.sug-inv-item');
+            if (invItem) {
+                const contInv = document.getElementById('listaSugerenciasInv');
+                const idx = Number(invItem.getAttribute('data-inv-idx'));
+                const listData = (contInv && contInv._sugerenciasData) || [];
+                const artObj = listData[idx] || masterArticulos.find(a => String(a['Artículo #'] || '') === String(invItem.getAttribute('data-art-cod') || ''));
+                if (artObj) {
+                    seleccionarArticuloInv(artObj);
+                }
+                return;
+            }
+
+            const stockItem = e.target.closest('.sug-stock-item');
+            if (stockItem) {
+                const contStock = document.getElementById('sugerenciasStockArt');
+                const idx = Number(stockItem.getAttribute('data-stock-idx'));
+                const listData = (contStock && contStock._sugerenciasData) || [];
+                const artObj = listData[idx] || masterArticulos.find(a => String(a['Artículo #'] || '') === String(stockItem.getAttribute('data-art-cod') || ''));
+                if (artObj) {
+                    seleccionarArticuloStock(artObj);
+                }
+                return;
+            }
+
+            const listaInv = document.getElementById('listaSugerenciasInv');
+            const inputInv = document.getElementById('txtBusquedaArtInv');
+            if (listaInv && inputInv && !listaInv.contains(e.target) && e.target !== inputInv) {
+                listaInv.classList.add('hidden');
+            }
+
+            const listaStock = document.getElementById('sugerenciasStockArt');
+            const inputStock = document.getElementById('txtBusqStockArt');
+            if (listaStock && inputStock && !listaStock.contains(e.target) && e.target !== inputStock) {
+                listaStock.classList.add('hidden');
+            }
+        });
 
         function renderizarLotesArticulo(art) {
             const artNum = String(art['Artículo #']);
