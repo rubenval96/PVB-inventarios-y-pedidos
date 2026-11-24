@@ -1571,7 +1571,7 @@
                     '<td class="p-2 font-semibold text-slate-800">' + l.lote + '</td>' +
                     '<td class="p-2 text-slate-600">' + (conteoStockActual[key].caducidad ? conteoStockActual[key].caducidad.slice(0, 10) : 'N/A') + '</td>' +
                     '<td class="p-2 text-right font-bold text-blue-600">' + stockSys + '</td>' +
-                    '<td class="p-2 text-right"><input type="number" step="any" min="0" value="' + stockRealVal + '" oninput="actualizarStockRealInput('' + artNum + '', '' + l.lote + '', this)" class="w-24 text-right text-xs border border-slate-300 rounded p-1 font-bold text-emerald-700 bg-emerald-50/30"></td></tr>';
+                    '<td class="p-2 text-right"><input type="number" step="any" min="0" value="' + stockRealVal + '" oninput="actualizarStockRealInput(&#39;&quot; + artNum + &quot;&#39;, &#39;&quot; + l.lote + &quot;&#39;, this)" class="w-24 text-right text-xs border border-slate-300 rounded p-1 font-bold text-emerald-700 bg-emerald-50/30"></td></tr>';
             });
 
             lotesKeysEnConteo.forEach(key => {
@@ -1581,7 +1581,7 @@
                         '<td class="p-2 font-semibold text-emerald-800">' + itemConteo.lote + ' <span class="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-bold">Manual</span></td>' +
                         '<td class="p-2 text-slate-600">' + (itemConteo.caducidad ? itemConteo.caducidad.slice(0, 10) : 'N/A') + '</td>' +
                         '<td class="p-2 text-right font-bold text-blue-600">0 (Nuevo)</td>' +
-                        '<td class="p-2 text-right"><input type="number" step="any" min="0" value="' + itemConteo.stockReal + '" oninput="actualizarStockRealInput('' + artNum + '', '' + itemConteo.lote + '', this)" class="w-24 text-right text-xs border border-slate-300 rounded p-1 font-bold text-emerald-700 bg-emerald-50/30"></td></tr>';
+                        '<td class="p-2 text-right"><input type="number" step="any" min="0" value="' + itemConteo.stockReal + '" oninput=\"actualizarStockRealInput(&#39;&quot; + artNum + &quot;&#39;, &#39;&quot; + itemConteo.lote + &quot;&#39;, this)\" class="w-24 text-right text-xs border border-slate-300 rounded p-1 font-bold text-emerald-700 bg-emerald-50/30"></td></tr>';
                 }
             });
 
@@ -1722,7 +1722,7 @@
             const filtrados = Array.from(provSet).filter(p => p.toLowerCase().includes(query)).slice(0, 15);
             cont.innerHTML = filtrados.length === 0
                 ? '<div class="p-2 text-xs text-slate-400">Sin proveedores.</div>'
-                : filtrados.map(p => '<div onclick="seleccionarProveedor('' + p.replace(/'/g, "\\'") + '')" class="p-2 hover:bg-emerald-50 cursor-pointer border-b text-xs font-medium text-slate-700">' + p + '</div>').join('');
+                : filtrados.map(p => '<div onclick=\"seleccionarProveedor(&#39;&quot; + p.replace(/'/g, '&amp;#39;') + &quot;&#39;)\" class="p-2 hover:bg-emerald-50 cursor-pointer border-b text-xs font-medium text-slate-700">' + p + '</div>').join('');
             cont.classList.remove('hidden');
         }
 
@@ -1773,7 +1773,7 @@
                         const qty = cantidadesPedido[cod] !== undefined ? cantidadesPedido[cod] : '';
                         return '<tr class="hover:bg-slate-50"><td class="p-2 font-medium">' + cod + '</td>' +
                             '<td class="p-2">' + (it['Abreviación *'] || it['Nombre'] || '') + '</td>' +
-                            '<td class="p-2 text-right"><input type="number" step="any" min="0" value="' + qty + '" oninput="actualizarCantidadPedido(this, '' + cod + '')" placeholder="0" class="w-24 text-right text-xs border rounded p-1 font-bold text-emerald-700 bg-emerald-50/30"></td></tr>';
+                            '<td class="p-2 text-right"><input type="number" step="any" min="0" value="' + qty + '" oninput=\"actualizarCantidadPedido(this, &#39;&quot; + cod + &quot;&#39;)\" placeholder="0" class="w-24 text-right text-xs border rounded p-1 font-bold text-emerald-700 bg-emerald-50/30"></td></tr>';
                     }).join('') +
                     '</tbody></table></div>';
             }
