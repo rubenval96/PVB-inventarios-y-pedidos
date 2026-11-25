@@ -448,6 +448,18 @@
 
     </div>
 
+        <!-- MODAL DE CARGA / SINCRONIZACIÓN CON GOOGLE SHEETS -->
+    <div id="modalSincronizando" class="fixed inset-0 bg-slate-900/50 backdrop-blur-[1px] z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 px-6 py-5 max-w-sm w-full flex flex-col items-center text-center gap-3">
+            <div class="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+            <p id="lblEstadoSincronizacion" class="text-sm font-bold text-slate-800">Sincronizando con Google Sheets...</p>
+            <p class="text-xs text-slate-500">Por favor espera un momento, no cierres la ventana.</p>
+            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden mt-1">
+                <div class="bg-emerald-600 h-full w-2/3 animate-pulse rounded-full"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="modalLoteNuevo" class="fixed inset-0 bg-black/40 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 flex flex-col gap-4 border border-slate-200">
             <h3 class="text-base font-bold text-slate-800">➕ Añadir Lote Nuevo (No registrado en Sistema)</h3>
@@ -1335,6 +1347,74 @@
             doc.save('InventarioRapido_' + inv.almacenCodigo + '_' + inv.fechaInventario + '.pdf');
         }
 
+                let sincronizandoSheetsActivo = false;
+
+        function mostrarEstadoSincronizacion(mensaje = 'Sincronizando con Google Sheets...') {
+            sincronizandoSheetsActivo = true;
+            const lbl = document.getElementById('lblEstadoSincronizacion');
+            const modal = document.getElementById('modalSincronizando');
+            if (lbl) lbl.textContent = mensaje;
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function ocultarEstadoSincronizacion() {
+            sincronizandoSheetsActivo = false;
+            const modal = document.getElementById('modalSincronizando');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        async function enviarInventarioAGoogleSheets(id) {
+            if (sincronizandoSheetsActivo) return;
+            if (!googleSheetsWebhookUrl) {
+                alert('No hay URL configurada en config.json (Estado: Desconectado).');
+                toggleSidebar();
+                return;
+            }
+            const inv = inventariosGuardados.find(i => i.id === id);
+            if (!inv) return;
+
+            const ver = Number(inv.version) || 1;
+            const payload = {
+                inventarioId: String(inv.id),
+                version: ver,
+                almacen: inv.almacenCodigo,
+                fechaInventario: inv.fechaInventario,
+                responsable: inv.responsable,
+                fechaRegistro: inv.fechaRegistro,
+                items: inv.items
+            };
+
+            mostrarEstadoSincronizacion('Enviando inventario (v' + ver + ') a Google Sheets...');
+            try {
+                await fetch(googleSheetsWebhookUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                ocultarEstadoSincronizacion();
+                alert('¡Inventario enviado a Google Sheets (Versión v' + ver + ')!');
+            } catch (error) {
+                ocultarEstadoSincronizacion();
+                alert('Error de conexión al intentar enviar los datos a Google Sheets.');
+            }
+        }
+
+        function ocultarEstadoSincronizacion() {
+            sincronizandoSheetsActivo = false;
+            const modal = document.getElementById('modalSincronizando');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
         async function enviarInventarioAGoogleSheets(id) {
             if (!googleSheetsWebhookUrl) {
                 alert('No hay URL configurada en config.json (Estado: Desconectado).');
@@ -1418,13 +1498,16 @@
         }
 
         async function cargarDatosDesdeSheetsConsolidador() {
+            if (sincronizandoSheetsActivo) return;
             if (!googleSheetsWebhookUrl) {
                 alert('No hay URL de Google Sheets configurada en config.json.');
                 return;
             }
+            mostrarEstadoSincronizacion('Cargando inventarios desde Google Sheets...');
             try {
                 const res = await fetch(googleSheetsWebhookUrl + '?action=getInventarios&t=' + new Date().getTime());
                 const json = await res.json();
+                ocultarEstadoSincronizacion();
                 if (json && json.status === 'ok') {
                     registrosFuenteConsolidador = json.rows || [];
                     poblarFiltroAlmacenesConsolidador();
@@ -1434,6 +1517,7 @@
                     alert('No se pudieron leer los datos de Google Sheets.');
                 }
             } catch (e) {
+                ocultarEstadoSincronizacion();
                 alert('Error al consultar Google Sheets.');
             }
         }
