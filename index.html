@@ -818,37 +818,47 @@
         }
 
         function calcularPuntuacionArticulo(art, queryRaw) {
-            const abrev = String(art['Abreviación *'] || '').toLowerCase();
-            const cod = String(art['Artículo #'] || '').toLowerCase();
-            const codAntiguo = String(art['Código Antiguo'] || '').toLowerCase();
-            const familia = String(art['Path Familia'] || '').toLowerCase();
+            const q = String(queryRaw || '').trim().toLowerCase();
+            if (!q) return 0;
+
+            const codAntiguo = String(art['Código Antiguo'] || '').trim().toLowerCase();
+            const cod = String(art['Artículo #'] || '').trim().toLowerCase();
+            const abrev = String(art['Abreviación *'] || '').trim().toLowerCase();
+            const familia = String(art['Path Familia'] || '').trim().toLowerCase();
 
             let score = 0;
-            const q = queryRaw.toLowerCase();
 
-            if (codAntiguo === q) score += 5000;
-            else if (codAntiguo.startsWith(q)) score += 4000;
-            else if (codAntiguo.includes(q)) score += 3000;
+            // 1. Prioridad máxima: Código Antiguo (insensible a mayúsculas/minúsculas)
+            if (codAntiguo) {
+                if (codAntiguo === q) score += 100000;
+                else if (codAntiguo.startsWith(q)) score += 80000;
+                else if (codAntiguo.includes(q)) score += 60000;
+            }
 
-            if (cod === q) score += 4500;
-            else if (cod.startsWith(q)) score += 3500;
-            else if (cod.includes(q)) score += 2500;
+            // 2. Segunda prioridad: Código Artículo #
+            if (cod) {
+                if (cod === q) score += 40000;
+                else if (cod.startsWith(q)) score += 30000;
+                else if (cod.includes(q)) score += 20000;
+            }
 
-            if (abrev === q) score += 4000;
-            else if (abrev.startsWith(q)) score += 3000;
-            else {
-                const palabrasAbrev = abrev.split(/\s+/);
-                if (palabrasAbrev.some(p => p.startsWith(q) || p === q)) {
-                    score += 2500;
-                } else if (abrev.includes(q)) {
-                    score += 1500;
+            // 3. Tercera prioridad: Abreviación *
+            if (abrev) {
+                if (abrev === q) score += 10000;
+                else if (abrev.startsWith(q)) score += 8000;
+                else {
+                    const palabrasAbrev = abrev.split(/\s+/);
+                    if (palabrasAbrev.some(p => p.startsWith(q) || p === q)) {
+                        score += 5000;
+                    } else if (abrev.includes(q)) {
+                        score += 2000;
+                    }
                 }
             }
 
-            if (familia.includes(q)) score += 200;
-
-            if (q.length === 1 && (abrev.startsWith(q) || codAntiguo.startsWith(q))) {
-                score += 1000;
+            // 4. Cuarta prioridad: Familia (Path)
+            if (familia && familia.includes(q)) {
+                score += 200;
             }
 
             return score;
@@ -877,7 +887,7 @@
             cont.classList.remove('hidden');
         }
 
-        function seleccionarArticuloInv(art) {
+        function seleccionarArticuloInv(art, mantenerCampos = false) {
             articuloSeleccionadoInv = art;
             document.getElementById('txtBusquedaArtInv').value = art['Abreviación *'];
             document.getElementById('lblArticuloNumInv').textContent = art['Artículo #'] || '-';
@@ -885,12 +895,15 @@
             document.getElementById('lblFamiliaInv').textContent = art['Path Familia'] || '-';
             document.getElementById('listaSugerenciasInv').classList.add('hidden');
 
-            if (ultimoLoteUsado) {
-                document.getElementById('txtLoteInv').value = ultimoLoteUsado;
-                document.getElementById('sugerenciaLoteInfo').classList.remove('hidden');
+            if (!mantenerCampos) {
+                document.getElementById('txtLoteInv').value = '';
+                document.getElementById('txtVencimientoInv').value = '';
             }
-            if (ultimaCaducidadUsada) {
-                document.getElementById('txtVencimientoInv').value = ultimaCaducidadUsada;
+
+            if (ultimoLoteUsado) {
+                document.getElementById('sugerenciaLoteInfo').classList.remove('hidden');
+            } else {
+                document.getElementById('sugerenciaLoteInfo').classList.add('hidden');
             }
             document.getElementById('txtLoteInv').focus();
         }
@@ -902,7 +915,6 @@
 
         function copiarUltimoItemCargado() {
             if (sesionStockRapido.length === 0 && !ultimoItemCargadoObj) {
-                alert('No hay ningún ítem previo cargado en esta sesión.');
                 return;
             }
             const itemBase = ultimoItemCargadoObj || sesionStockRapido[0];
@@ -913,12 +925,16 @@
                 'Path Familia': itemBase.familia
             };
 
-            seleccionarArticuloInv(artMatch);
-            document.getElementById('txtLoteInv').value = itemBase.lote;
-            document.getElementById('txtVencimientoInv').value = itemBase.vencimiento || '';
-            document.getElementById('txtStockInv').value = itemBase.stock;
-            document.getElementById('sugerenciaLoteInfo').classList.remove('hidden');
-            alert('¡Ítem "' + itemBase.abreviacion + '" copiado con su lote ' + itemBase.lote + '!');
+            seleccionarArticuloInv(artMatch, true);
+            document.getElementById('txtLoteInv').value = itemBase.lote || '';
+            document.getElementById('txtVencimientoInv').value = '';
+            document.getElementById('txtStockInv').value = '';
+            if (ultimoLoteUsado) {
+                document.getElementById('sugerenciaLoteInfo').classList.remove('hidden');
+            }
+            const inputLote = document.getElementById('txtLoteInv');
+            inputLote.focus();
+            inputLote.select();
         }
 
         function guardarRegistroSesionInv() {
@@ -936,6 +952,14 @@
             if (!lote) { alert('Indica el lote.'); return; }
             if (!vencimiento) { alert('Indica el vencimiento.'); return; }
             if (!stock || isNaN(stock)) { alert('Cantidad inválida.'); return; }
+
+            if (vencimiento < fecha) {
+                const continuarCaducado = confirm('⚠️ PRODUCTO CADUCADO: La fecha de caducidad (' + vencimiento + ') es menor a la fecha del inventario (' + fecha + ').\n\nPulsa Aceptar para continuar o Cancelar para corregir la fecha.');
+                if (!continuarCaducado) {
+                    document.getElementById('txtVencimientoInv').focus();
+                    return;
+                }
+            }
 
             ultimoLoteUsado = lote;
             ultimaCaducidadUsada = vencimiento;
