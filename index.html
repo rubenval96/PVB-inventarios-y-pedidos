@@ -1406,48 +1406,6 @@
             }
         }
 
-        function ocultarEstadoSincronizacion() {
-            sincronizandoSheetsActivo = false;
-            const modal = document.getElementById('modalSincronizando');
-            if (modal) {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            }
-        }
-
-        async function enviarInventarioAGoogleSheets(id) {
-            if (!googleSheetsWebhookUrl) {
-                alert('No hay URL configurada en config.json (Estado: Desconectado).');
-                toggleSidebar();
-                return;
-            }
-            const inv = inventariosGuardados.find(i => i.id === id);
-            if (!inv) return;
-
-            const ver = Number(inv.version) || 1;
-            const payload = {
-                inventarioId: String(inv.id),
-                version: ver,
-                almacen: inv.almacenCodigo,
-                fechaInventario: inv.fechaInventario,
-                responsable: inv.responsable,
-                fechaRegistro: inv.fechaRegistro,
-                items: inv.items
-            };
-
-            try {
-                await fetch(googleSheetsWebhookUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                alert('¡Inventario enviado a Google Sheets (Versión v' + ver + ')!');
-            } catch (error) {
-                alert('Error de conexión al intentar enviar los datos a Google Sheets.');
-            }
-        }
-
         function eliminarInventarioSesion(id) {
             if (confirm('¿Eliminar inventario?')) {
                 inventariosGuardados = inventariosGuardados.filter(i => i.id !== id);
