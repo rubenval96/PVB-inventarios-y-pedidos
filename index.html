@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -357,7 +358,7 @@
                     <div class="flex justify-between items-center border-b pb-3 mb-4">
                         <div class="flex items-center gap-3">
                             <h2 class="text-base font-semibold text-slate-700">🛒 Listado de Artículos del Proveedor</h2>
-                            <input type="text" id="txtFiltroMatriz" placeholder="Filtrar artículos en pantalla..." oninput="filtrarMatrizPedidoUI()" class="text-xs border border-slate-300 rounded px-3 py-1.5 w-64">
+                            <div class="flex items-center gap-2 flex-wrap"><input type="text" id="txtFiltroMatriz" placeholder="Filtrar artículos en pantalla..." oninput="filtrarMatrizPedidoUI()" class="text-xs border border-slate-300 rounded px-3 py-1.5 w-64"><button type="button" onclick="abrirModalConsultarArticulos()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow transition flex items-center gap-1">🔎 Consultar artículo</button></div>
                         </div>
                         <div class="flex items-center gap-3">
                             <span id="badgeEditandoPedido" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">Editando Pedido Guardado</span>
@@ -460,6 +461,54 @@
         </div>
     </div>
 
+        <!-- MODAL CONSULTAR ARTÍCULOS CON PROVEEDOR / CÓDIGO EAN / CÁMARA -->
+    <div id="modalConsultarArticulos" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-3 sm:p-6">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-indigo-600 text-white px-5 py-3.5 flex justify-between items-center gap-3">
+                <div>
+                    <h3 class="text-base font-bold">🔎 Consultar Artículos (Con Proveedor Asignado)</h3>
+                    <p class="text-[11px] text-indigo-100">Busca por Proveedor, Nombre/Abreviación, Artículo # o Código EAN. No se muestran artículos de producción propia sin proveedor.</p>
+                </div>
+                <button type="button" onclick="cerrarModalConsultarArticulos()" class="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">✕ Salir</button>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-b flex flex-col gap-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 flex-1 min-w-[240px]">
+                        <input type="text" id="txtBusqConsultaArt" placeholder="Buscar por proveedor, nombre, código o Código EAN..." oninput="renderizarCatalogoConsulta()" class="flex-1 text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <button type="button" onclick="alternarEscanerCamaraEan()" id="btnCamaraEan" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                            📷 Escanear EAN
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="lblContadorConsultaArt" class="text-xs font-bold bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full">0 artículos</span>
+                        <button type="button" onclick="agregarSeleccionConsulta()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow transition">
+                            ➕ Agregar Selección
+                        </button>
+                    </div>
+                </div>
+
+                <div id="panelCamaraEan" class="hidden bg-slate-900 text-white rounded-xl p-3 flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-bold text-emerald-300">📷 Escáner de Código EAN / Barras</span>
+                        <button type="button" onclick="detenerEscanerCamaraEan()" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded font-semibold">Detener Cámara</button>
+                    </div>
+                    <div id="lectorCamaraEan" class="w-full max-w-md mx-auto rounded-lg overflow-hidden bg-black min-h-[180px]"></div>
+                    <p class="text-[11px] text-slate-300 text-center">Apunta la cámara al código EAN del producto. Requiere HTTPS y permiso de cámara en el móvil.</p>
+                </div>
+            </div>
+
+            <div id="contenedorCatalogoConsulta" class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-slate-100/60">
+                <div class="text-center text-slate-400 py-10 text-xs">Cargando catálogo de artículos con proveedor...</div>
+            </div>
+
+            <div class="px-5 py-3 bg-white border-t flex justify-between items-center">
+                <span class="text-xs text-slate-500">Proveedor activo: <strong id="lblProveedorActivoConsulta" class="text-slate-800">Ninguno</strong></span>
+                <button type="button" onclick="cerrarModalConsultarArticulos()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition">Salir</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modalLoteNuevo" class="fixed inset-0 bg-black/40 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 flex flex-col gap-4 border border-slate-200">
             <h3 class="text-base font-bold text-slate-800">➕ Añadir Lote Nuevo (No registrado en Sistema)</h3>
@@ -513,7 +562,10 @@
 
         let proveedorSeleccionado = '';
         let cantidadesPedido = {};
+        let observacionesPedido = {};
         let editPedidoId = null;
+        let html5QrCodeInstance = null;
+        let camaraEanActiva = false;
 
         document.getElementById('txtFechaInv').valueAsDate = new Date();
         document.getElementById('txtConsFechaXml').valueAsDate = new Date();
@@ -1832,29 +1884,53 @@
             cont.classList.remove('hidden');
         }
 
+        function obtenerProveedorArticulo(art) {
+            return String(art['Nombre'] || art['PROVEEDOR'] || art['Proveedor'] || '').trim();
+        }
+
         function seleccionarProveedor(prov) {
             proveedorSeleccionado = prov;
             document.getElementById('txtBusquedaProv').value = prov;
             document.getElementById('listaSugerenciasProv').classList.add('hidden');
-            if (!editPedidoId) cantidadesPedido = {};
+            if (!editPedidoId) {
+                cantidadesPedido = {};
+                observacionesPedido = {};
+            }
             cargarMatrizPedido();
         }
 
         let articulosProveedorActual = [];
         function cargarMatrizPedido() {
             if (!proveedorSeleccionado) return;
-            articulosProveedorActual = masterArticulos.filter(art => {
-                const prov = art['Nombre'] || art['PROVEEDOR'] || art['Proveedor'];
-                return prov && String(prov).trim() === proveedorSeleccionado;
-            });
+            const baseProv = masterArticulos.filter(art => obtenerProveedorArticulo(art) === proveedorSeleccionado);
+            const codigosExtra = Object.keys(cantidadesPedido).filter(cod => !baseProv.some(a => String(a['Artículo #'] || '') === String(cod)));
+            const extraArts = codigosExtra.map(cod => masterArticulos.find(a => String(a['Artículo #'] || '') === String(cod))).filter(Boolean);
+            articulosProveedorActual = baseProv.concat(extraArts);
             document.getElementById('contadorArticulosProv').textContent = articulosProveedorActual.length + ' artículos';
             renderizarMatrizHTML(articulosProveedorActual);
         }
 
         function actualizarCantidadPedido(input, artCod) {
-            const val = parseFloat(input.value);
-            if (!isNaN(val) && val > 0) cantidadesPedido[artCod] = val;
-            else delete cantidadesPedido[artCod];
+            const rawStr = String(input.value).trim();
+            if (rawStr === '') {
+                delete cantidadesPedido[artCod];
+                return;
+            }
+            const val = parseFloat(rawStr);
+            if (!isNaN(val) && val >= 0) {
+                cantidadesPedido[artCod] = val;
+                if (val === 0 && !observacionesPedido[artCod]) {
+                    observacionesPedido[artCod] = 'Revisar Cantidad';
+                }
+            } else {
+                delete cantidadesPedido[artCod];
+            }
+        }
+
+        function actualizarObservacionPedido(input, artCod) {
+            const val = String(input.value || '').trim();
+            if (val) observacionesPedido[artCod] = val;
+            else delete observacionesPedido[artCod];
         }
 
         function renderizarMatrizHTML(lista) {
@@ -1872,14 +1948,16 @@
                     '<h3 class="text-xs font-bold text-slate-700 uppercase">📁 ' + familia + '</h3>' +
                     '<span class="text-[11px] bg-slate-200 px-2 py-0.5 rounded font-semibold">' + items.length + ' ítems</span></div>' +
                     '<table class="w-full text-left text-xs"><thead class="bg-slate-50 text-slate-500 border-b">' +
-                    '<tr><th class="p-2 w-28">Artículo #</th><th class="p-2">Descripción</th><th class="p-2 w-32 text-right">CANTIDAD</th></tr></thead>' +
+                    '<tr><th class="p-2 w-28">Artículo #</th><th class="p-2">Descripción</th><th class="p-2 w-28 text-right">CANTIDAD</th><th class="p-2 w-56">OBSERVACIÓN</th></tr></thead>' +
                     '<tbody class="divide-y divide-slate-100">' +
                     items.map(it => {
-                        const cod = it['Artículo #'] || '';
+                        const cod = String(it['Artículo #'] || '');
                         const qty = cantidadesPedido[cod] !== undefined ? cantidadesPedido[cod] : '';
+                        const obs = observacionesPedido[cod] || '';
                         return '<tr class="hover:bg-slate-50"><td class="p-2 font-medium">' + cod + '</td>' +
                             '<td class="p-2">' + (it['Abreviación *'] || it['Nombre'] || '') + '</td>' +
-                            '<td class="p-2 text-right"><input type="number" step="any" min="0" value="' + qty + '" oninput="actualizarCantidadPedido(this, \x27' + cod + '\x27)" placeholder="0" class="w-24 text-right text-xs border rounded p-1 font-bold text-emerald-700 bg-emerald-50/30"></td></tr>';
+                            '<td class="p-2 text-right"><input type="number" step="any" min="0" value="' + qty + '" oninput="actualizarCantidadPedido(this, \x27' + cod + '\x27)" placeholder="" class="w-24 text-right text-xs border rounded p-1 font-bold text-emerald-700 bg-emerald-50/30"></td>' +
+                            '<td class="p-2"><input type="text" value="' + obs.replace(/"/g, '&quot;') + '" oninput="actualizarObservacionPedido(this, \x27' + cod + '\x27)" placeholder="Comentario / observación..." class="w-full text-xs border rounded p-1 bg-slate-50"></td></tr>';
                     }).join('') +
                     '</tbody></table></div>';
             }
@@ -1889,8 +1967,238 @@
 
         function filtrarMatrizPedidoUI() {
             const query = document.getElementById('txtFiltroMatriz').value.toLowerCase();
-            const filtrados = articulosProveedorActual.filter(art => ((art['Abreviación *'] || '') + ' ' + (art['Artículo #'] || '')).toLowerCase().includes(query));
+            const filtrados = articulosProveedorActual.filter(art => ((art['Abreviación *'] || '') + ' ' + (art['Artículo #'] || '') + ' ' + (observacionesPedido[String(art['Artículo #'] || '')] || '')).toLowerCase().includes(query));
             renderizarMatrizHTML(filtrados);
+        }
+
+        function abrirModalConsultarArticulos() {
+            const modal = document.getElementById('modalConsultarArticulos');
+            const lblProv = document.getElementById('lblProveedorActivoConsulta');
+            lblProv.textContent = proveedorSeleccionado || 'Ninguno (selecciona uno arriba)';
+            document.getElementById('txtBusqConsultaArt').value = '';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            renderizarCatalogoConsulta();
+            document.getElementById('txtBusqConsultaArt').focus();
+        }
+
+        function cerrarModalConsultarArticulos() {
+            detenerEscanerCamaraEan();
+            const modal = document.getElementById('modalConsultarArticulos');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (proveedorSeleccionado) {
+                cargarMatrizPedido();
+            }
+        }
+
+        function renderizarCatalogoConsulta() {
+            const q = String(document.getElementById('txtBusqConsultaArt').value || '').trim().toLowerCase();
+            const cont = document.getElementById('contenedorCatalogoConsulta');
+
+            const conProveedor = masterArticulos.filter(art => obtenerProveedorArticulo(art) !== '');
+
+            const filtrados = conProveedor.filter(art => {
+                if (!q) return true;
+                const prov = obtenerProveedorArticulo(art).toLowerCase();
+                const abrev = String(art['Abreviación *'] || '').toLowerCase();
+                const cod = String(art['Artículo #'] || '').toLowerCase();
+                const ean = String(art['Código EAN'] || '').toLowerCase();
+                return prov.includes(q) || abrev.includes(q) || cod.includes(q) || ean.includes(q);
+            });
+
+            document.getElementById('lblContadorConsultaArt').textContent = filtrados.length + ' de ' + conProveedor.length + ' artículos';
+
+            if (filtrados.length === 0) {
+                cont.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-slate-400 text-xs border">No se encontraron artículos con proveedor asignado para ese criterio.</div>';
+                return;
+            }
+
+            const familiasMap = {};
+            filtrados.forEach(art => {
+                const fam = art['Path Familia'] || art['Familia'] || 'SIN FAMILIA';
+                if (!familiasMap[fam]) familiasMap[fam] = [];
+                familiasMap[fam].push(art);
+            });
+
+            let html = '';
+            for (const [familia, items] of Object.entries(familiasMap)) {
+                html += '<div class="border rounded-xl overflow-hidden bg-white shadow-sm">' +
+                    '<div class="bg-slate-100 px-4 py-2 border-b flex justify-between items-center">' +
+                    '<h4 class="text-xs font-bold text-slate-700 uppercase">📁 ' + familia + '</h4>' +
+                    '<span class="text-[11px] bg-slate-200 px-2 py-0.5 rounded font-semibold">' + items.length + ' ítems</span></div>' +
+                    '<div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-slate-50 text-slate-500 border-b">' +
+                    '<tr>' +
+                    '<th class="p-2 w-10 text-center">Sel.</th>' +
+                    '<th class="p-2">Artículo</th>' +
+                    '<th class="p-2">Proveedor</th>' +
+                    '<th class="p-2 w-28 text-right">Cantidad</th>' +
+                    '<th class="p-2 w-24 text-center">Acción</th>' +
+                    '</tr></thead><tbody class="divide-y divide-slate-100">';
+
+                items.forEach((art, idx) => {
+                    const cod = String(art['Artículo #'] || '');
+                    const abrev = String(art['Abreviación *'] || art['Nombre'] || '');
+                    const provArt = obtenerProveedorArticulo(art);
+                    const ean = String(art['Código EAN'] || '');
+                    const safeCod = cod.replace(/'/g, '');
+                    const safeProv = provArt.replace(/'/g, '');
+                    const rowId = 'cons_' + safeCod + '_' + idx;
+
+                    html += '<tr class="hover:bg-slate-50">' +
+                        '<td class="p-2 text-center"><input type="checkbox" id="chk_' + rowId + '" class="chk-consulta-art w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" data-cod="' + cod.replace(/"/g, '&quot;') + '" data-prov="' + provArt.replace(/"/g, '&quot;') + '" data-qty-id="qty_' + rowId + '"></td>' +
+                        '<td class="p-2"><div class="font-semibold text-slate-800">' + abrev + '</div><div class="text-[10px] text-slate-500">Cód: ' + cod + (ean ? ' | EAN: ' + ean : '') + '</div></td>' +
+                        '<td class="p-2 font-medium text-indigo-700">' + provArt + '</td>' +
+                        '<td class="p-2 text-right"><input type="number" step="any" min="0" id="qty_' + rowId + '" placeholder="" class="w-24 text-right text-xs border border-slate-300 rounded p-1 font-bold text-emerald-700 bg-emerald-50/30"></td>' +
+                        '<td class="p-2 text-center"><button type="button" onclick="agregarUnArticuloConsulta(\x27' + safeCod + '\x27, \x27' + safeProv + '\x27, \x27qty_' + rowId + '\x27, \x27chk_' + rowId + '\x27)" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-2.5 py-1 rounded transition">Agregar</button></td>' +
+                        '</tr>';
+                });
+
+                html += '</tbody></table></div></div>';
+            }
+            cont.innerHTML = html;
+        }
+
+        function procesarArticuloParaPedidoActivo(artCod, provHabitual, rawQtyStr) {
+            const almPed = document.getElementById('selAlmacenPed').value;
+            if (!proveedorSeleccionado) {
+                alert('Primero selecciona un Proveedor activo en el formulario principal.');
+                return false;
+            }
+            if (!almPed) {
+                alert('Primero selecciona un Almacén destino en el formulario principal.');
+                return false;
+            }
+            if (String(rawQtyStr).trim() === '') {
+                alert('Agrega una cantidad');
+                return false;
+            }
+            const qty = parseFloat(rawQtyStr);
+            if (isNaN(qty) || qty < 0) {
+                alert('Agrega una cantidad');
+                return false;
+            }
+
+            let obsExtra = '';
+            if (provHabitual && String(provHabitual).trim() !== String(proveedorSeleccionado).trim()) {
+                const msgProv = 'Vas a cargar un artículo que se compra habitualmente al proveedor "' + provHabitual + '" hacia el proveedor activo "' + proveedorSeleccionado + '".\n\n¿Deseas continuar?';
+                if (!confirm(msgProv)) {
+                    return false;
+                }
+                obsExtra = 'Compra habitualmente al proveedor "' + provHabitual + '"';
+            }
+
+            if (qty === 0) {
+                obsExtra = obsExtra ? (obsExtra + ' - Revisar Cantidad') : 'Revisar Cantidad';
+            }
+
+            cantidadesPedido[artCod] = (parseFloat(cantidadesPedido[artCod]) || 0) + qty;
+            if (obsExtra) {
+                observacionesPedido[artCod] = observacionesPedido[artCod]
+                    ? (observacionesPedido[artCod] + ' | ' + obsExtra)
+                    : obsExtra;
+            }
+            return true;
+        }
+
+        function agregarUnArticuloConsulta(artCod, provHabitual, qtyInputId, chkId) {
+            const qtyEl = document.getElementById(qtyInputId);
+            const chkEl = document.getElementById(chkId);
+            const rawQty = qtyEl ? qtyEl.value : '';
+            const ok = procesarArticuloParaPedidoActivo(artCod, provHabitual, rawQty);
+            if (ok) {
+                if (qtyEl) qtyEl.value = '';
+                if (chkEl) chkEl.checked = false;
+                cargarMatrizPedido();
+            }
+        }
+
+        function agregarSeleccionConsulta() {
+            const checks = Array.from(document.querySelectorAll('.chk-consulta-art:checked'));
+            if (checks.length === 0) {
+                alert('Marca al menos una casilla para agregar la selección.');
+                return;
+            }
+            let agregados = 0;
+            for (const chk of checks) {
+                const cod = chk.getAttribute('data-cod') || '';
+                const provHabitual = chk.getAttribute('data-prov') || '';
+                const qtyId = chk.getAttribute('data-qty-id') || '';
+                const qtyEl = qtyId ? document.getElementById(qtyId) : null;
+                const rawQty = qtyEl ? qtyEl.value : '';
+
+                if (String(rawQty).trim() === '') {
+                    alert('Agrega una cantidad');
+                    if (qtyEl) qtyEl.focus();
+                    return;
+                }
+
+                const ok = procesarArticuloParaPedidoActivo(cod, provHabitual, rawQty);
+                if (ok) {
+                    if (qtyEl) qtyEl.value = '';
+                    chk.checked = false;
+                    agregados++;
+                }
+            }
+            if (agregados > 0) {
+                cargarMatrizPedido();
+            }
+        }
+
+        async function alternarEscanerCamaraEan() {
+            if (camaraEanActiva) {
+                await detenerEscanerCamaraEan();
+            } else {
+                await iniciarEscanerCamaraEan();
+            }
+        }
+
+        async function iniciarEscanerCamaraEan() {
+            const panel = document.getElementById('panelCamaraEan');
+            const btn = document.getElementById('btnCamaraEan');
+            panel.classList.remove('hidden');
+            camaraEanActiva = true;
+            if (btn) btn.textContent = '⏹ Cerrar Cámara';
+
+            if (typeof Html5Qrcode === 'undefined') {
+                alert('No se cargó la librería de cámara. Verifica tu conexión a internet o escribe el Código EAN manualmente.');
+                return;
+            }
+
+            try {
+                if (!html5QrCodeInstance) {
+                    html5QrCodeInstance = new Html5Qrcode('lectorCamaraEan');
+                }
+                await html5QrCodeInstance.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: { width: 260, height: 110 } },
+                    async (decodedText) => {
+                        const limpio = String(decodedText || '').trim();
+                        if (limpio) {
+                            document.getElementById('txtBusqConsultaArt').value = limpio;
+                            renderizarCatalogoConsulta();
+                            await detenerEscanerCamaraEan();
+                        }
+                    },
+                    () => {}
+                );
+            } catch (err) {
+                alert('No se pudo activar la cámara del dispositivo. Revisa los permisos de cámara y el uso de HTTPS.');
+                await detenerEscanerCamaraEan();
+            }
+        }
+
+        async function detenerEscanerCamaraEan() {
+            camaraEanActiva = false;
+            const panel = document.getElementById('panelCamaraEan');
+            const btn = document.getElementById('btnCamaraEan');
+            if (btn) btn.textContent = '📷 Escanear EAN';
+            if (html5QrCodeInstance && html5QrCodeInstance.isScanning) {
+                try {
+                    await html5QrCodeInstance.stop();
+                } catch (e) {}
+            }
+            if (panel) panel.classList.add('hidden');
         }
 
         function guardarPedidoEnHistorial() {
@@ -1898,12 +2206,24 @@
             if (!proveedorSeleccionado || !almacen) { alert('Selecciona proveedor y almacén.'); return; }
             const lineas = [];
             for (const [artCod, qty] of Object.entries(cantidadesPedido)) {
-                if (qty > 0) {
+                const numQty = parseFloat(qty);
+                if (!isNaN(numQty) && numQty >= 0) {
                     const artData = masterArticulos.find(a => String(a['Artículo #']) === String(artCod));
                     if (artData) {
                         const pathFam = artData['Path Familia'] || artData['Familia'] || 'SIN FAMILIA';
                         const partesFam = pathFam.split(/[\/]/);
-                        lineas.push({ articuloNum: artCod, abreviacion: artData['Abreviación *'] || '', familiaLarga: pathFam, familiaCorta: partesFam[partesFam.length - 1].trim(), cantidad: qty });
+                        let obsFinal = observacionesPedido[artCod] || '';
+                        if (numQty === 0 && !obsFinal.includes('Revisar Cantidad')) {
+                            obsFinal = obsFinal ? (obsFinal + ' - Revisar Cantidad') : 'Revisar Cantidad';
+                        }
+                        lineas.push({
+                            articuloNum: artCod,
+                            abreviacion: artData['Abreviación *'] || '',
+                            familiaLarga: pathFam,
+                            familiaCorta: partesFam[partesFam.length - 1].trim(),
+                            cantidad: numQty,
+                            observacion: obsFinal
+                        });
                     }
                 }
             }
@@ -1927,7 +2247,7 @@
         }
 
         function limpiarFormularioPedido() {
-            proveedorSeleccionado = ''; cantidadesPedido = {}; editPedidoId = null;
+            proveedorSeleccionado = ''; cantidadesPedido = {}; observacionesPedido = {}; editPedidoId = null;
             document.getElementById('txtBusquedaProv').value = '';
             document.getElementById('selAlmacenPed').value = '';
             document.getElementById('badgeEditandoPedido').classList.add('hidden');
@@ -1942,6 +2262,7 @@
                 '<div class="border rounded-lg p-3 bg-slate-50 flex justify-between items-center text-xs">' +
                 '<div><b>Prov:</b> ' + ped.proveedor + ' | <b>Alm:</b> ' + ped.almacen + ' | ⏱️ ' + ped.fechaRegistro + ' | <span class="font-bold">' + ped.items.length + ' ítems</span></div>' +
                 '<div class="flex gap-1"><button onclick="exportarExcelPedido(' + ped.id + ')" class="bg-blue-600 text-white px-2 py-1 rounded">📥 Excel</button>' +
+                '<button onclick="exportarPdfPedido(' + ped.id + ')" class="bg-rose-600 text-white px-2 py-1 rounded">📑 PDF</button>' +
                 '<button onclick="eliminarPedido(' + ped.id + ')" class="bg-red-100 text-red-700 px-2 py-1 rounded">🗑️</button></div></div>'
             )).join('');
         }
@@ -1949,11 +2270,51 @@
         function exportarExcelPedido(id) {
             const ped = pedidosGuardados.find(p => p.id === id);
             if (!ped) return;
-            const rows = ped.items.map(l => ({ "Proveedor": ped.proveedor, "Almacén": ped.almacen, "Artículo": l.articuloNum, "Familia": l.familiaLarga, "Abreviación": l.abreviacion, "Cantidad": l.cantidad }));
+            const rows = ped.items.map(l => ({
+                "Proveedor": ped.proveedor,
+                "Almacén": ped.almacen,
+                "Artículo": l.articuloNum,
+                "Familia": l.familiaLarga,
+                "Abreviación": l.abreviacion,
+                "Cantidad": l.cantidad,
+                "Observación": l.observacion || ""
+            }));
             const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Pedido");
             XLSX.writeFile(wb, 'Pedido_' + ped.proveedor + '_' + ped.almacen + '.xlsx');
+        }
+
+        function exportarPdfPedido(id) {
+            const ped = pedidosGuardados.find(p => p.id === id);
+            if (!ped) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            doc.setFontSize(14);
+            doc.setTextColor(6, 95, 70);
+            doc.text('REPORTE DE PEDIDO A PROVEEDOR', 14, 18);
+            doc.setFontSize(9.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text('Proveedor: ' + ped.proveedor + '   |   Almacén: ' + ped.almacen + '   |   Fecha: ' + ped.fechaRegistro, 14, 26);
+
+            const tableColumn = ["Artículo", "Abreviación", "Cantidad", "Observación"];
+            const tableRows = ped.items.map(l => [
+                l.articuloNum,
+                l.abreviacion,
+                String(l.cantidad),
+                l.observacion || ""
+            ]);
+
+            doc.autoTable({
+                head: [tableColumn],
+                body: tableRows,
+                startY: 34,
+                theme: 'grid',
+                headStyles: { fillColor: [5, 150, 105], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 8, textColor: 30 }
+            });
+
+            doc.save('Pedido_' + ped.proveedor + '_' + ped.almacen + '.pdf');
         }
 
         function eliminarPedido(id) {
