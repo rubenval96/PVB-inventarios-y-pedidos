@@ -331,21 +331,38 @@
             </div>
 
             <div id="viewPedidos" class="hidden flex-col gap-6 flex-1">
-                <!-- Selector de Sub-modo: 1. Por Proveedor | 2. Por Artículo -->
-                <div class="bg-white px-5 py-3 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex items-center gap-2">
-                        <button type="button" id="btnSubModoProveedor" onclick="cambiarSubModoPedido('proveedor')" class="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow transition">
-                            1. Por Proveedor
-                        </button>
-                        <button type="button" id="btnSubModoArticulo" onclick="cambiarSubModoPedido('articulo')" class="px-4 py-2 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
-                            2. Por Artículo
-                        </button>
+                <!-- PANTALLA INTERMEDIA: DOS ICONOS (POR PROVEEDOR / POR ARTÍCULO) -->
+                <div id="panelSelectorTipoPedido" class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center gap-6">
+                    <div class="text-center max-w-lg">
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800">Módulo de Pedidos</h2>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-1">Elige cómo deseas crear el pedido:</p>
                     </div>
-                    <span id="badgeEditandoPedido" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded">Editando Pedido Guardado</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
+                        <div onclick="abrirSubVistaPedido('proveedor')" class="bg-emerald-50/40 hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-500 rounded-2xl p-6 shadow-sm transition cursor-pointer flex flex-col items-center text-center gap-3 group">
+                            <div class="w-16 h-16 bg-emerald-100 group-hover:bg-emerald-600 text-emerald-700 group-hover:text-white rounded-2xl flex items-center justify-center text-3xl transition">🏭</div>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">Por Proveedor</h3>
+                                <p class="text-xs text-slate-500 mt-1">Selecciona un proveedor y carga cantidades por familia.</p>
+                            </div>
+                        </div>
+                        <div onclick="abrirSubVistaPedido('articulo')" class="bg-blue-50/40 hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-500 rounded-2xl p-6 shadow-sm transition cursor-pointer flex flex-col items-center text-center gap-3 group">
+                            <div class="w-16 h-16 bg-blue-100 group-hover:bg-blue-600 text-blue-700 group-hover:text-white rounded-2xl flex items-center justify-center text-3xl transition">📦</div>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">Por Artículo</h3>
+                                <p class="text-xs text-slate-500 mt-1">Busca o escanea EAN de artículos con proveedor asignado.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- SUB-MODO 1: POR PROVEEDOR -->
-                <div id="panelPedidoPorProveedor" class="flex flex-col gap-6">
+                <div id="panelPedidoPorProveedor" class="hidden flex-col gap-6">
+                    <div class="flex items-center justify-between gap-2">
+                        <button type="button" onclick="volverASelectorTipoPedido()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition">
+                            ← Elegir modo de pedido
+                        </button>
+                        <span id="badgeEditandoPedido" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded">Editando Pedido Guardado</span>
+                    </div>
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                         <div class="relative">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">1. Proveedor (Nombre) *</label>
@@ -390,6 +407,11 @@
 
                 <!-- SUB-MODO 2: POR ARTÍCULO -->
                 <div id="panelPedidoPorArticulo" class="hidden flex-col gap-6">
+                    <div class="flex items-center justify-between gap-2">
+                        <button type="button" onclick="volverASelectorTipoPedido()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition">
+                            ← Elegir modo de pedido
+                        </button>
+                    </div>
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
@@ -818,7 +840,25 @@
             document.getElementById('btnNavConsolidador').classList.remove('hidden');
         }
 
-        function mostrarPantallaInicio() {
+        function hayPedidoConLineaYCantidadCargada() {
+            const hayEnProveedor = Object.values(cantidadesPedido).some(v => {
+                const n = parseFloat(v);
+                return !isNaN(n) && n > 0;
+            });
+            const hayEnArticulo = Array.isArray(lineasPedidoPorArticulo) && lineasPedidoPorArticulo.some(l => {
+                const n = parseFloat(l && l.cantidad);
+                return !isNaN(n) && n > 0;
+            });
+            return hayEnProveedor || hayEnArticulo;
+        }
+
+        function mostrarPantallaInicio(forzar = false) {
+            if (!forzar && hayPedidoConLineaYCantidadCargada()) {
+                const salir = confirm('⚠️ Tienes líneas con cantidad cargada en el pedido actual. Si abandonas esta pantalla podrías perder los datos no guardados.\n\n¿Deseas ir al Menú Principal de todos modos?');
+                if (!salir) return;
+            }
+            detenerCamaraPedPorArticulo();
+            detenerEscanerCamaraEan();
             document.getElementById('viewInicio').classList.remove('hidden');
             document.getElementById('viewInicio').classList.add('flex');
             document.getElementById('viewInventario').classList.add('hidden');
@@ -859,6 +899,7 @@
                 document.getElementById('viewPedidos').classList.remove('hidden');
                 document.getElementById('viewPedidos').classList.add('flex');
                 document.getElementById('lblModuloActivo').textContent = 'Módulo: Pedidos';
+                mostrarSelectorTipoPedido();
                 renderizarPedidosGuardados();
             } else if (mod === 'consolidador') {
                 document.getElementById('viewConsolidador').classList.remove('hidden');
@@ -2377,6 +2418,65 @@
             document.getElementById('contenedorMatrizPedidos').innerHTML = '<div class="text-center text-slate-400 py-12 text-sm">Selecciona un <b>Proveedor</b>.</div>';
         }
 
+        function mostrarSelectorTipoPedido() {
+            detenerCamaraPedPorArticulo();
+            detenerEscanerCamaraEan();
+            const selPanel = document.getElementById('panelSelectorTipoPedido');
+            const pProv = document.getElementById('panelPedidoPorProveedor');
+            const pArt = document.getElementById('panelPedidoPorArticulo');
+            if (selPanel) {
+                selPanel.classList.remove('hidden');
+                selPanel.classList.add('flex');
+            }
+            if (pProv) {
+                pProv.classList.add('hidden');
+                pProv.classList.remove('flex');
+            }
+            if (pArt) {
+                pArt.classList.add('hidden');
+                pArt.classList.remove('flex');
+            }
+        }
+
+        function abrirSubVistaPedido(modo) {
+            subModoPedidoActual = modo;
+            const selPanel = document.getElementById('panelSelectorTipoPedido');
+            const pProv = document.getElementById('panelPedidoPorProveedor');
+            const pArt = document.getElementById('panelPedidoPorArticulo');
+            if (selPanel) {
+                selPanel.classList.add('hidden');
+                selPanel.classList.remove('flex');
+            }
+            if (modo === 'articulo') {
+                if (pProv) {
+                    pProv.classList.add('hidden');
+                    pProv.classList.remove('flex');
+                }
+                if (pArt) {
+                    pArt.classList.remove('hidden');
+                    pArt.classList.add('flex');
+                }
+                if (!document.getElementById('txtFechaPedArt').value) {
+                    document.getElementById('txtFechaPedArt').valueAsDate = new Date();
+                }
+                renderizarTablaPedidoPorArticulo();
+            } else {
+                detenerCamaraPedPorArticulo();
+                if (pArt) {
+                    pArt.classList.add('hidden');
+                    pArt.classList.remove('flex');
+                }
+                if (pProv) {
+                    pProv.classList.remove('hidden');
+                    pProv.classList.add('flex');
+                }
+            }
+        }
+
+        function volverASelectorTipoPedido() {
+            mostrarSelectorTipoPedido();
+        }
+
         function cambiarSubModoPedido(modo) {
             subModoPedidoActual = modo;
             const btnProv = document.getElementById('btnSubModoProveedor');
@@ -2739,7 +2839,7 @@
             if (!ped) return;
             if (ped.tipoPedido === 'articulo') {
                 editPedidoPorArticuloId = id;
-                cambiarSubModoPedido('articulo');
+                abrirSubVistaPedido('articulo');
                 document.getElementById('selAlmacenPedArt').value = ped.almacen || '';
                 if (ped.fechaPedido) document.getElementById('txtFechaPedArt').value = ped.fechaPedido;
                 lineasPedidoPorArticulo = (ped.items || []).map(it => Object.assign({}, it));
@@ -2747,7 +2847,7 @@
                 renderizarTablaPedidoPorArticulo();
             } else {
                 editPedidoId = id;
-                cambiarSubModoPedido('proveedor');
+                abrirSubVistaPedido('proveedor');
                 seleccionarProveedor(ped.proveedor);
                 document.getElementById('selAlmacenPed').value = ped.almacen || '';
                 cantidadesPedido = {};
