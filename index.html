@@ -1422,6 +1422,48 @@
             XLSX.writeFile(wb, 'InventarioRapido_' + inv.almacenCodigo + '_' + inv.fechaInventario + '.xlsx');
         }
 
+        function normalizarFechaCaducidadMarino(rawVal) {
+            if (rawVal === null || rawVal === undefined) return '';
+            const s = String(rawVal).trim();
+            if (!s || s === '-' || s.toUpperCase() === 'N/A' || s.toLowerCase() === 'invalid date') return '';
+
+            // Ya viene en formato ISO completo de Marino (YYYY-MM-DDTHH:MM:SS+HH:MM)
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(s)) {
+                return s;
+            }
+
+            // Viene como YYYY-MM-DD al inicio
+            const isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})/);
+            if (isoMatch) {
+                return isoMatch[1] + 'T00:00:00+01:00';
+            }
+
+            // Viene como DD/MM/YYYY
+            const dmyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+            if (dmyMatch) {
+                const dd = dmyMatch[1].padStart(2, '0');
+                const mm = dmyMatch[2].padStart(2, '0');
+                const yyyy = dmyMatch[3];
+                return yyyy + '-' + mm + '-' + dd + 'T00:00:00+01:00';
+            }
+
+            // Intentar parsear fecha de texto (ej. "Wed Nov 25 2026...")
+            const parsed = new Date(s);
+            if (!isNaN(parsed.getTime())) {
+                const yyyy = parsed.getFullYear();
+                const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+                const dd = String(parsed.getDate()).padStart(2, '0');
+                return yyyy + '-' + mm + '-' + dd + 'T00:00:00+01:00';
+            }
+
+            return '';
+        }
+
+        function formatearFechaCaducidadCorta(rawVal) {
+            const iso = normalizarFechaCaducidadMarino(rawVal);
+            return iso ? iso.slice(0, 10) : '-';
+        }
+
         function construirXmlMarinoDesdeLineas(lineas, almacenFallback, fechaIso) {
             const mapaLote = {};
             const mapaArticuloAlmacen = {};
@@ -1470,9 +1512,7 @@
             Object.values(mapaLote).forEach(entry => {
                 const stockTotArt = (mapaArticuloAlmacen[entry.almacen + '__' + entry.articuloNum] || 0).toFixed(6);
                 const stockLoteFmt = (entry.stockLote || 0).toFixed(6);
-                const fechaCadIso = (entry.vencimiento && String(entry.vencimiento).length >= 10)
-                    ? String(entry.vencimiento).slice(0, 10) + 'T00:00:00+01:00'
-                    : '';
+                const fechaCadIso = normalizarFechaCaducidadMarino(entry.vencimiento);
 
                 parts.push('  <usM6LEC_Inventarios_Exportar>');
                 parts.push('    <Almacén>' + entry.almacen + '</Almacén>');
@@ -1756,7 +1796,7 @@
                 '<td class="p-2 font-medium">' + it.articuloNum + '</td>' +
                 '<td class="p-2">' + it.abreviacion + '</td>' +
                 '<td class="p-2 font-semibold">' + it.lote + '</td>' +
-                '<td class="p-2">' + (it.vencimiento ? String(it.vencimiento).slice(0, 10) : '-') + '</td>' +
+                '<td class="p-2">' + formatearFechaCaducidadCorta(it.vencimiento) + '</td>' +
                 '<td class="p-2 text-right font-bold text-emerald-700">' + it.stockLote.toFixed(6) + '</td>' +
                 '<td class="p-2 text-right font-bold text-slate-700">' + it.stockArticuloAlmacen.toFixed(6) + '</td>' +
                 '</tr>'
